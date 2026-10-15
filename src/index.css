@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-dark: #0B0F19;
+  --color-brand-panel: #131B2E;
+  --color-brand-yellow: #FFD600;
+  --color-brand-border: #1E293B;
+}
+
+body {
+  background-color: var(--color-brand-dark);
+  color: #FFFFFF;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+}
