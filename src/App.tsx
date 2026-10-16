@@ -2,6 +2,7 @@
 import { AuthProvider } from './context/AuthContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { PublicoOverview } from './components/publico/PublicoOverview';
 
 export function DashboardContent() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -12,11 +13,7 @@ export function DashboardContent() {
       <div className="flex flex-1">
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 p-6 overflow-y-auto">
-          {activeTab === 'overview' && (
-            <div className="border-2 border-dashed border-[#1E293B] rounded-xl p-8 text-center text-gray-500">
-              Área do Módulo 1: Visão Geral & Métricas de Público (Colega 2)
-            </div>
-          )}
+          {activeTab === 'overview' && <PublicoOverview />}
           {activeTab === 'balcao' && (
             <div className="border-2 border-dashed border-[#1E293B] rounded-xl p-8 text-center text-gray-500">
               Área do Módulo 2: Balcão & Filas (Colega 3)
