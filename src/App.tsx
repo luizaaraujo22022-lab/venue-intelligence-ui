@@ -1,8 +1,10 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { PublicoOverview } from './components/publico/PublicoOverview';
+import { BalcaoFilasView } from './components/balcao/BalcaoFilasView';
+import { AutosservicoZonasView } from './components/autosservico/AutosservicoZonasView';
 
 export function DashboardContent() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -14,19 +16,14 @@ export function DashboardContent() {
         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
         <main className="flex-1 p-6 overflow-y-auto">
           {activeTab === 'overview' && <PublicoOverview />}
-          {activeTab === 'balcao' && (
-            <div className="border-2 border-dashed border-[#1E293B] rounded-xl p-8 text-center text-gray-500">
-              Área do Módulo 2: Balcão & Filas (Colega 3)
-            </div>
-          )}
-          {activeTab === 'autosservico' && (
-            <div className="border-2 border-dashed border-[#1E293B] rounded-xl p-8 text-center text-gray-500">
-              Área do Módulo 3: Autosserviço & Instagramável (Colega 4)
-            </div>
-          )}
+          {activeTab === 'balcao' && <BalcaoFilasView />}
+          {activeTab === 'autosservico' && <AutosservicoZonasView />}
           {activeTab === 'sintese' && (
-            <div className="border-2 border-dashed border-[#1E293B] rounded-xl p-8 text-center text-gray-500">
-              Área da Síntese D1-D3
+            <div className="rounded-xl border border-[#1E293B] bg-[#111827] p-8 text-center text-gray-400">
+              <h3 className="text-base font-bold text-gray-200">Síntese Consolidada D1–D3</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Relatórios acumulados de fluxo e comparação multidiária do estande RAIZ.
+              </p>
             </div>
           )}
         </main>

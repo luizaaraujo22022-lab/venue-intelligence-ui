@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import clsx from 'clsx';
 import { ArrowLeftRight, CalendarDays, Clock, Gauge, RefreshCw, TriangleAlert, Users } from 'lucide-react';
 import { usePublicoMetrics } from '../../hooks/usePublicoMetrics';
 import type { PublicoMetrics } from '../../hooks/usePublicoMetrics';
@@ -8,6 +9,7 @@ import { formatarDuracao } from '../../utils/publico';
 import { HeatmapCard } from './HeatmapCard';
 import { KpiCard } from './KpiCard';
 import { SeloSimulado } from './SeloSimulado';
+import { PublicoHeatmap } from '../PublicoHeatmap';
 
 const numero = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
@@ -64,6 +66,7 @@ export const PublicoOverviewView: React.FC<PublicoOverviewViewProps> = ({
   const maiorDia = Math.max(1, ...porDia.map((d) => d.visitas));
 
   const semDados = global === null && zonas.length === 0;
+  const [modoHeatmap, setModoHeatmap] = useState<'3d' | '2d'>('3d');
 
   return (
     <div className="space-y-4">
@@ -182,7 +185,51 @@ export const PublicoOverviewView: React.FC<PublicoOverviewViewProps> = ({
         </div>
       </div>
 
-      <HeatmapCard zonas={zonas} global={global} loading={loading && semDados} />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Visualização Espacial do Estande
+            </span>
+          </div>
+          <div className="flex items-center bg-[#131B2E] p-1 rounded-lg border border-[#1E293B] text-xs">
+            <button
+              type="button"
+              onClick={() => setModoHeatmap('3d')}
+              className={clsx(
+                'px-3 py-1 rounded font-medium transition-colors',
+                modoHeatmap === '3d'
+                  ? 'bg-[#FFD600] text-[#0B0F19] font-bold shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              )}
+            >
+              Mapa de Calor 3D (RAIZ)
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoHeatmap('2d')}
+              className={clsx(
+                'px-3 py-1 rounded font-medium transition-colors',
+                modoHeatmap === '2d'
+                  ? 'bg-[#FFD600] text-[#0B0F19] font-bold shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200'
+              )}
+            >
+              Planta Esquemática 2D
+            </button>
+          </div>
+        </div>
+
+        {modoHeatmap === '3d' ? (
+          <PublicoHeatmap
+            zonas={zonas}
+            global={global}
+            simulated={zonas.length === 0}
+          />
+        ) : (
+          <HeatmapCard zonas={zonas} global={global} loading={loading && semDados} />
+        )}
+      </div>
     </div>
   );
 };
