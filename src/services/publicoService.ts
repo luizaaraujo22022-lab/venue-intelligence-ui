@@ -5,11 +5,7 @@ import type {
   ReadinessHeatmapResponse,
 } from '../types/publico';
 
-// Chamadas HTTP do módulo de Público. Usa a instância `api` já existente
-// (baseURL vem de VITE_API_BASE_URL; o token Bearer é anexado automaticamente).
-//
-// O servidor gratuito do Render "dorme" e a primeira resposta pode levar ~1 min,
-// por isso o timeout é generoso.
+
 const TIMEOUT_MS = 60_000;
 
 export async function getReadinessHeatmap(signal?: AbortSignal): Promise<ReadinessHeatmapResponse> {
