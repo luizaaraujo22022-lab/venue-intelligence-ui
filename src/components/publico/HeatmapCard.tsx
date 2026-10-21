@@ -12,13 +12,10 @@ import {
 import { SeloSimulado } from './SeloSimulado';
 
 export interface HeatmapCardProps {
-  /** Zonas já convertidas com toZonaPublico(). */
   zonas: ZonaPublico[];
-  /** Números gerais do estande (densidade máxima, velocidade, hotspots...). */
   global?: MapaCalorGlobal | null;
   loading?: boolean;
   error?: string | null;
-  /** Marca o card inteiro como dado fictício. */
   simulated?: boolean;
   className?: string;
 }
@@ -44,7 +41,6 @@ const STATUS_COR: Record<StatusCor, { ponto: string; rotulo: string }> = {
   VERMELHO: { ponto: 'bg-rose-500', rotulo: 'Crítico' },
 };
 
-// A planta usa coordenadas de 0 a 1000 nos dois eixos (y cresce para baixo).
 const PLANTA = 1000;
 const LINHAS_GRADE = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 
@@ -68,7 +64,6 @@ interface PlantaProps {
   zonas: ZonaPublico[];
 }
 
-// Mapa: uma mancha de calor por zona, na posição da planta.
 const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
   const prefixo = useId().replace(/:/g, '');
   const comPosicao = zonas.filter((z) => z.posicao !== null);
@@ -77,7 +72,7 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
     <svg
       viewBox={`0 0 ${PLANTA} ${PLANTA}`}
       role="img"
-      aria-label={`Mapa de calor com ${comPosicao.length} zonas, colorido pela ocupação de cada uma`}
+      aria-label={`Mapa de calor com ${comPosicao.length} zonas`}
       className="w-full h-auto rounded-lg bg-[#0B0F19] border border-[#1E293B]"
     >
       <defs>
@@ -118,13 +113,12 @@ const PlantaCalor: React.FC<PlantaProps> = ({ zonas }) => {
         const { x, y } = z.posicao!;
         const cor = corDeCalor(intensidadeDeCalor(z.ocupacaoPct));
         const emAlerta = z.ocupacaoPct >= LIMITE_ALERTA_OCUPACAO;
-        // Rótulos perto das bordas viram "alinhados" para não saírem do desenho.
         const ancora = x > 800 ? 'end' : x < 200 ? 'start' : 'middle';
         const xTexto = ancora === 'end' ? x + 20 : ancora === 'start' ? x - 20 : x;
 
         return (
           <g key={z.id}>
-            <title>{`${z.codigo} — ${z.titulo}: ${z.pessoas} pessoas, ${z.ocupacaoPct}% da capacidade`}</title>
+            <title>{`${z.codigo} — ${z.titulo}: ${z.pessoas} pessoas`}</title>
             {emAlerta && (
               <circle
                 cx={x}
@@ -205,16 +199,9 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
       </header>
 
       {loading ? (
-        <div
-          role="status"
-          aria-label="Carregando mapa de calor"
-          className="aspect-square max-w-xl mx-auto rounded-lg bg-[#0B0F19] border border-[#1E293B] motion-safe:animate-pulse"
-        />
+        <div className="aspect-square max-w-xl mx-auto rounded-lg bg-[#0B0F19] border border-[#1E293B] motion-safe:animate-pulse" />
       ) : error ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300"
-        >
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
           Não foi possível carregar o mapa de calor. {error}
         </div>
       ) : zonas.length === 0 ? (
@@ -237,13 +224,9 @@ export const HeatmapCard: React.FC<HeatmapCardProps> = ({
                   <span>Média</span>
                   <span>Alta ({LIMITE_ALERTA_OCUPACAO}%+ alerta)</span>
                 </div>
-                <p className="mt-2 text-[11px] text-gray-500">
-                  A cor mostra a ocupação da zona (pessoas ÷ capacidade). Posições vêm da planta do
-                  estande (coordenadas 0–1000).
-                </p>
                 {semPosicao > 0 && (
                   <p className="mt-1 text-[11px] text-amber-400">
-                    {semPosicao} zona(s) sem coordenadas não aparecem no mapa, só na lista.
+                    {semPosicao} zona(s) sem coordenadas não aparecem no mapa.
                   </p>
                 )}
               </div>
