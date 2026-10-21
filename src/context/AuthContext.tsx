@@ -1,5 +1,5 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, LoginCredentials } from '../types/auth';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { User, LoginCredentials } from '../types/auth';
 import { api } from '../services/api';
 
 interface AuthContextType {
@@ -13,31 +13,35 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('@venue-intelligence:token');
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('@venue-intelligence:user');
-
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    if (!storedUser) return null;
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      return null;
     }
-    setLoading(false);
-  }, []);
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('@venue-intelligence:token');
+  });
+  const [loading, setLoading] = useState(false);
 
   const login = async (credentials: LoginCredentials) => {
-    const response = await api.post('/api/v1/auth/login', credentials);
-    const { token: newToken, user: newUser } = response.data;
+    setLoading(true);
+    try {
+      const response = await api.post('/api/v1/auth/login', credentials);
+      const { token: newToken, user: newUser } = response.data;
 
-    localStorage.setItem('@venue-intelligence:token', newToken);
-    localStorage.setItem('@venue-intelligence:user', JSON.stringify(newUser));
+      localStorage.setItem('@venue-intelligence:token', newToken);
+      localStorage.setItem('@venue-intelligence:user', JSON.stringify(newUser));
 
-    setToken(newToken);
-    setUser(newUser);
+      setToken(newToken);
+      setUser(newUser);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
@@ -54,4 +58,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+// oxlint-disable-next-line react/only-export-components
 export const useAuth = () => useContext(AuthContext);
