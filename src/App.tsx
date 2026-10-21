@@ -1,12 +1,32 @@
-import { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { useState, useEffect } from 'react';
+import { 
+  Activity, 
+  RefreshCw, 
+  Package, 
+  Radio, 
+  Plus, 
+  Layers3, 
+  Bot, 
+  Compass, 
+  Beer, 
+  Camera, 
+  X 
+} from 'lucide-react';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { PublicoOverview } from './components/publico/PublicoOverview';
 import { BalcaoFilasView } from './components/balcao/BalcaoFilasView';
 import { AutosservicoZonasView } from './components/autosservico/AutosservicoZonasView';
 import { SinteseD1D3View } from './components/sintese/SinteseD1D3View';
+import { AutosservicoCard } from './components/AutosservicoCard';
+import { InstagramavelCard } from './components/InstagramavelCard';
+import { Venue3DScene } from './components/Venue3DScene';
+import { SinteseAcumulada } from './components/SinteseAcumulada';
+import { TerminalCLI } from './components/TerminalCLI';
 
+// Ajusta o caminho abaixo se os dados iniciais estiverem em './data/mockData' ou noutro ficheiro de mocks
+import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
+import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
 export function DashboardContent() {
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -294,7 +314,7 @@ export default function App() {
                   Venue Intelligence Core
                 </h1>
                 <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-400">
-                  RAIZ
+                  RAÍZ
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
@@ -305,9 +325,9 @@ export default function App() {
               <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono mt-0.5 flex-wrap">
                 <span>Gateway: api-evento-ia.onrender.com</span>
                 <span className="text-slate-600">·</span>
-                <span className="text-emerald-400 font-bold">• {pingLatency}ms</span>
+                <span className="text-emerald-400 font-bold">{pingLatency}ms</span>
                 <span className="text-slate-600">·</span>
-                <span>• Atualizado às {lastUpdate}</span>
+                <span>Atualizado às {lastUpdate}</span>
               </div>
             </div>
           </div>
