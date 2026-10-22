@@ -7,16 +7,10 @@ import {
   Share2, 
   Clock, 
   CheckCircle, 
-  AlertCircle, 
   Download, 
-  Filter, 
   Zap, 
   Activity, 
   Layers, 
-  Beer, 
-  Camera, 
-  Calendar,
-  Sparkles,
   AlertTriangle
 } from 'lucide-react';
 import type { SinteseAcumuladaData } from '../types/venue';

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Beer, 
-  TrendingUp, 
   Clock, 
-  Users, 
   Thermometer, 
   Gauge, 
   RefreshCw, 
@@ -12,11 +10,9 @@ import {
   ChevronDown, 
   ChevronUp, 
   MapPin, 
-  CheckCircle2, 
   AlertTriangle, 
   XCircle,
   PackageCheck,
-  Zap
 } from 'lucide-react';
 import type { AutosservicoItem, StatusAutosservico } from '../types/venue';
 
