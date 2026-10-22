@@ -3,19 +3,14 @@ import {
   Camera, 
   Sparkles, 
   Heart, 
-  Share2, 
   Clock, 
-  Users, 
   Star, 
   MapPin, 
-  Sun, 
   ChevronDown, 
   ChevronUp, 
-  CheckCircle2, 
   Flame, 
   PauseCircle,
-  Sliders,
-  Zap
+  Sliders
 } from 'lucide-react';
 import type { InstagramavelItem, StatusInstagramavel } from '../types/venue';
 

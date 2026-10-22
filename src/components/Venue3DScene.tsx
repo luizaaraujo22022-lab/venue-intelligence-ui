@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { AutosservicoItem, InstagramavelItem } from '../types/venue';
-import { Eye, Layers, Sun, Moon, Maximize2, Compass, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sun, Moon, Compass, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Venue3DSceneProps {
   autos: AutosservicoItem[];
@@ -11,9 +11,6 @@ interface Venue3DSceneProps {
   onSelectAtracao: (id: string) => void;
 }
 
-const _targetPos = new THREE.Vector3();
-const _camPos = new THREE.Vector3();
-const _lookTarget = new THREE.Vector3(0, 0, 0);
 const _currentLook = new THREE.Vector3(0, 0, 0);
 
 export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
