@@ -524,7 +524,10 @@ export default function App() {
                   isSelected={selectedAtracaoId === item.id}
                   onSimularTransacao={(id, valor) => {
                     handleSimularTransacao(id, valor);
-                    void vendaExpress();
+                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
+                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                    });
                   }}
                   onReabastecer={handleReabastecer}
                   onToggleManutencao={handleToggleManutencao}
