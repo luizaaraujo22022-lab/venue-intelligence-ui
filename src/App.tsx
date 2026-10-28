@@ -20,6 +20,10 @@ import { TerminalCLI } from './components/TerminalCLI';
 import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
 import { ApiToast } from './components/ui/ApiToast';
 import { useOpsActions } from './hooks/useOpsActions';
+import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
+import { toZonaPublico } from './utils/publico';
+import { gerarAlertasPreditivos } from './utils/predicao';
+import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
 // Ajusta o caminho abaixo se os dados iniciais estiverem em './data/mockData' ou noutro ficheiro de mocks
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
