@@ -12,12 +12,6 @@ import {
   Camera, 
   X 
 } from 'lucide-react';
-import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { PublicoOverview } from './components/publico/PublicoOverview';
-import { BalcaoFilasView } from './components/balcao/BalcaoFilasView';
-import { AutosservicoZonasView } from './components/autosservico/AutosservicoZonasView';
-import { SinteseD1D3View } from './components/sintese/SinteseD1D3View';
 import { AutosservicoCard } from './components/AutosservicoCard';
 import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
@@ -27,24 +21,6 @@ import { TerminalCLI } from './components/TerminalCLI';
 // Ajusta o caminho abaixo se os dados iniciais estiverem em './data/mockData' ou noutro ficheiro de mocks
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
 import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
-export function DashboardContent() {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  return (
-    <div className="min-h-screen bg-[#0B0F19] flex flex-col font-sans antialiased text-gray-100">
-      <Header />
-      <div className="flex flex-1">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        <main className="flex-1 p-6 overflow-y-auto">
-          {activeTab === 'overview' && <PublicoOverview />}
-          {activeTab === 'balcao' && <BalcaoFilasView />}
-          {activeTab === 'autosservico' && <AutosservicoZonasView />}
-          {activeTab === 'sintese' && <SinteseD1D3View />}
-        </main>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
