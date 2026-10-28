@@ -2,27 +2,264 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { AutosservicoItem, InstagramavelItem } from '../types/venue';
-import { Sun, Moon, Compass, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Sun,
+  Moon,
+  Compass,
+  ChevronDown,
+  ChevronUp,
+  Camera,
+  Flame,
+  X,
+  Activity,
+  Layers,
+  Radio,
+  Eye,
+} from 'lucide-react';
 
-interface Venue3DSceneProps {
+export type TipoCamera = 'entrada_perimetro' | 'fb_liquid';
+
+export interface HardwareCamera {
+  id: string;
+  codigo: string;
+  nome: string;
+  tipo: TipoCamera;
+  setor: string;
+  posicao: [number, number, number];
+  alvo: [number, number, number];
+  status: 'operacional' | 'atencao' | 'critico';
+  fps: number;
+  metricas: {
+    rotulo: string;
+    valor: string;
+    detalhe?: string;
+  };
+}
+
+export const HARDWARE_CAMERAS: HardwareCamera[] = [
+
+  {
+    id: 'cam-ent-01',
+    codigo: 'CAM-ENT-01',
+    nome: 'Entrada Portão A (Perímetro Norte)',
+    tipo: 'entrada_perimetro',
+    setor: 'Acesso / Perímetro Norte',
+    posicao: [-4, 4.2, 12],
+    alvo: [-4, 0, 12],
+    status: 'operacional',
+    fps: 30,
+    metricas: {
+      rotulo: 'Fluxo Acesso',
+      valor: '380 pess/h',
+      detalhe: 'Tempo fila: 1.5 min',
+    },
+  },
+  {
+    id: 'cam-ent-02',
+    codigo: 'CAM-ENT-02',
+    nome: 'Entrada Catracas VIP',
+    tipo: 'entrada_perimetro',
+    setor: 'Acesso / VIP',
+    posicao: [-1, 4.2, 12],
+    alvo: [-1, 0, 12],
+    status: 'operacional',
+    fps: 30,
+    metricas: {
+      rotulo: 'Fluxo VIP',
+      valor: '120 pess/h',
+      detalhe: 'Tempo fila: 0.5 min',
+    },
+  },
+  {
+    id: 'cam-ent-03',
+    codigo: 'CAM-ENT-03',
+    nome: 'Entrada Pista Principal',
+    tipo: 'entrada_perimetro',
+    setor: 'Acesso / Geral',
+    posicao: [1, 4.2, 12],
+    alvo: [1, 0, 12],
+    status: 'operacional',
+    fps: 30,
+    metricas: {
+      rotulo: 'Fluxo Geral',
+      valor: '490 pess/h',
+      detalhe: 'Tempo fila: 2.8 min',
+    },
+  },
+  {
+    id: 'cam-ent-04',
+    codigo: 'CAM-ENT-04',
+    nome: 'Entrada Perímetro Leste',
+    tipo: 'entrada_perimetro',
+    setor: 'Acesso / Leste',
+    posicao: [4, 4.2, 12],
+    alvo: [4, 0, 12],
+    status: 'operacional',
+    fps: 30,
+    metricas: {
+      rotulo: 'Fluxo Leste',
+      valor: '210 pess/h',
+      detalhe: 'Tempo fila: 1.1 min',
+    },
+  },
+
+  {
+    id: 'cam-fb-01',
+    codigo: 'CAM-FB-01',
+    nome: 'F&B Chopp Hub 1 (IPA & Pilsen)',
+    tipo: 'fb_liquid',
+    setor: 'Liquid / F&B Oeste',
+    posicao: [-5, 4.8, 2],
+    alvo: [-5, 0.8, 2],
+    status: 'operacional',
+    fps: 60,
+    metricas: {
+      rotulo: 'Vazão de Chopp',
+      valor: '6.4 L/min',
+      detalhe: 'Nível barril: 94% · 3.2°C',
+    },
+  },
+  {
+    id: 'cam-fb-02',
+    codigo: 'CAM-FB-02',
+    nome: 'F&B Estação Central Liquid',
+    tipo: 'fb_liquid',
+    setor: 'Liquid / F&B Centro',
+    posicao: [0, 5.0, -2],
+    alvo: [0, 1.0, -2],
+    status: 'operacional',
+    fps: 60,
+    metricas: {
+      rotulo: 'Atendimentos F&B',
+      valor: '4.8 atend/min',
+      detalhe: 'Pressão Chopp: 2.2 bar',
+    },
+  },
+  {
+    id: 'cam-fb-03',
+    codigo: 'CAM-FB-03',
+    nome: 'F&B Chopp Hub 3 (Artesanais & Retirada)',
+    tipo: 'fb_liquid',
+    setor: 'Liquid / F&B Leste',
+    posicao: [5, 4.8, 2],
+    alvo: [5, 0.8, 2],
+    status: 'operacional',
+    fps: 60,
+    metricas: {
+      rotulo: 'Vazão de Chopp',
+      valor: '5.1 L/min',
+      detalhe: 'Nível barril: 88% · 2.9°C',
+    },
+  },
+];
+
+export interface Venue3DSceneProps {
   autos: AutosservicoItem[];
   instas: InstagramavelItem[];
   selectedId: string | null;
   onSelectAtracao: (id: string) => void;
+
+  selectedCameraId?: string | null;
+  onSelectCamera?: (camera: HardwareCamera | null) => void;
+  heatmapIntensity?: number;
+  onHeatmapIntensityChange?: (intensity: number) => void;
 }
 
 const _currentLook = new THREE.Vector3(0, 0, 0);
+
+function createVenueHeatmapTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const toCanvas = (x: number, z: number): [number, number] => {
+    const u = ((x + 18) / 36) * 512;
+    const v = ((z + 18) / 36) * 512;
+    return [u, v];
+  };
+
+  const heatPoints = [
+    { x: -5, z: 2, radius: 95, colorInner: 'rgba(239, 68, 68, 0.95)', colorMid: 'rgba(249, 115, 22, 0.75)' },
+
+    { x: 0, z: -2, radius: 105, colorInner: 'rgba(239, 68, 68, 0.9)', colorMid: 'rgba(250, 204, 21, 0.7)' },
+
+    { x: 5, z: 2, radius: 90, colorInner: 'rgba(249, 115, 22, 0.9)', colorMid: 'rgba(250, 204, 21, 0.65)' },
+
+    { x: -4, z: 12, radius: 55, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
+    { x: -1, z: 12, radius: 45, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
+    { x: 1, z: 12, radius: 60, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
+    { x: 4, z: 12, radius: 50, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
+
+    { x: 0, z: -11, radius: 110, colorInner: 'rgba(168, 85, 247, 0.65)', colorMid: 'rgba(59, 130, 246, 0.3)' },
+  ];
+
+  heatPoints.forEach((pt) => {
+    const [cx, cy] = toCanvas(pt.x, pt.z);
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pt.radius);
+    grad.addColorStop(0, pt.colorInner);
+    grad.addColorStop(0.35, pt.colorMid);
+    grad.addColorStop(0.7, 'rgba(37, 99, 235, 0.25)');
+    grad.addColorStop(1, 'rgba(37, 99, 235, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pt.radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
 
 export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   autos,
   instas,
   selectedId,
   onSelectAtracao,
+  selectedCameraId,
+  onSelectCamera,
+  heatmapIntensity: propHeatmapIntensity,
+  onHeatmapIntensityChange,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+
   const [isNightMode, setIsNightMode] = useState(true);
-  const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea'>('geral');
+  const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent'>('geral');
   const [hudCollapsed, setHudCollapsed] = useState(false);
+  const [showHeatmapControls, setShowHeatmapControls] = useState(false);
+
+  const [selectedCamera, setSelectedCamera] = useState<HardwareCamera | null>(() => {
+    if (selectedCameraId) {
+      return HARDWARE_CAMERAS.find((c) => c.id === selectedCameraId) || null;
+    }
+    return null;
+  });
+
+
+  const [heatmapIntensity, setHeatmapIntensity] = useState<number>(
+    propHeatmapIntensity !== undefined ? propHeatmapIntensity : 0.75
+  );
+
+  useEffect(() => {
+    if (selectedCameraId !== undefined) {
+      const found = HARDWARE_CAMERAS.find((c) => c.id === selectedCameraId) || null;
+      setSelectedCamera(found);
+    }
+  }, [selectedCameraId]);
+
+  useEffect(() => {
+    if (propHeatmapIntensity !== undefined) {
+      setHeatmapIntensity(propHeatmapIntensity);
+    }
+  }, [propHeatmapIntensity]);
+
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -32,21 +269,66 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
   const hemiLightRef = useRef<THREE.HemisphereLight | null>(null);
   const interactiveObjectsRef = useRef<Map<string, THREE.Group>>(new Map());
+  const cameraMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
+  const heatmapMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
+  const heatmapMeshRef = useRef<THREE.Mesh | null>(null);
 
-  const applyPreset = (preset: 'geral' | 'autos' | 'instas' | 'aerea') => {
+  const selectedCameraRef = useRef<HardwareCamera | null>(selectedCamera);
+  selectedCameraRef.current = selectedCamera;
+
+  const heatmapIntensityRef = useRef<number>(heatmapIntensity);
+  heatmapIntensityRef.current = heatmapIntensity;
+
+  const handleIntensityChange = (val: number) => {
+    setHeatmapIntensity(val);
+    onHeatmapIntensityChange?.(val);
+    if (heatmapMatRef.current) {
+      heatmapMatRef.current.opacity = val;
+      heatmapMatRef.current.visible = val > 0.01;
+    }
+  };
+
+  const handleSelectCamera = (cam: HardwareCamera | null) => {
+    setSelectedCamera(cam);
+    onSelectCamera?.(cam);
+
+    if (cam) {
+
+      targetCamPosRef.current.set(
+        cam.posicao[0] * 0.75,
+        cam.posicao[1] + 3.2,
+        cam.posicao[2] + 5.2
+      );
+      targetLookAtRef.current.set(cam.alvo[0], cam.alvo[1], cam.alvo[2]);
+    }
+  };
+
+  const applyPreset = (preset: 'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent') => {
     setActivePreset(preset);
     if (preset === 'geral') {
       targetCamPosRef.current.set(0, 15, 20);
       targetLookAtRef.current.set(0, 1, 0);
     } else if (preset === 'autos') {
-      targetCamPosRef.current.set(-6, 7, 10);
-      targetLookAtRef.current.set(-5, 1, 2);
+      targetCamPosRef.current.set(-5, 7, 10);
+      targetLookAtRef.current.set(-4, 1, 2);
     } else if (preset === 'instas') {
       targetCamPosRef.current.set(0, 6, 12);
       targetLookAtRef.current.set(0, 1.5, 4);
     } else if (preset === 'aerea') {
       targetCamPosRef.current.set(0, 26, 0.1);
       targetLookAtRef.current.set(0, 0, 0);
+    } else if (preset === 'cams_fb') {
+
+      targetCamPosRef.current.set(0, 10, 12);
+      targetLookAtRef.current.set(0, 1.5, 1);
+      const firstFb = HARDWARE_CAMERAS.find((c) => c.tipo === 'fb_liquid');
+      if (firstFb) handleSelectCamera(firstFb);
+    } else if (preset === 'cams_ent') {
+
+      targetCamPosRef.current.set(0, 8, 20);
+      targetLookAtRef.current.set(0, 1.5, 12);
+      const firstEnt = HARDWARE_CAMERAS.find((c) => c.tipo === 'entrada_perimetro');
+      if (firstEnt) handleSelectCamera(firstEnt);
     }
   };
 
@@ -86,6 +368,52 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   }, [selectedId, autos, instas]);
 
+
+  useEffect(() => {
+    cameraMeshesRef.current.forEach((group, id) => {
+      const isSelected = selectedCamera?.id === id;
+      const camData = HARDWARE_CAMERAS.find((c) => c.id === id);
+      const isFB = camData?.tipo === 'fb_liquid';
+
+      const bodyMesh = group.getObjectByName(`${id}-body`) as THREE.Mesh | undefined;
+      const ringMesh = group.getObjectByName(`${id}-ring`) as THREE.Mesh | undefined;
+      const fovCone = group.getObjectByName(`${id}-fov`) as THREE.Mesh | undefined;
+      const targetRing = group.getObjectByName(`${id}-target-ring`) as THREE.Mesh | undefined;
+
+      if (bodyMesh && bodyMesh.material) {
+        const mat = bodyMesh.material as THREE.MeshStandardMaterial;
+        if (isSelected) {
+
+          mat.color.set(0x00ffcc);
+          mat.emissive.set(0x00ffcc);
+          mat.emissiveIntensity = 2.0;
+        } else {
+
+          const colorHex = isFB ? 0x34d399 : 0x38bdf8;
+          const emissiveHex = isFB ? 0x059669 : 0x0284c7;
+          mat.color.set(colorHex);
+          mat.emissive.set(emissiveHex);
+          mat.emissiveIntensity = isFB ? 0.9 : 0.75;
+        }
+      }
+
+      if (ringMesh && ringMesh.material) {
+        const rMat = ringMesh.material as THREE.MeshBasicMaterial;
+        rMat.color.set(isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8);
+      }
+
+      if (fovCone) fovCone.visible = isSelected;
+      if (targetRing) targetRing.visible = isSelected;
+    });
+  }, [selectedCamera]);
+
+  useEffect(() => {
+    if (heatmapMatRef.current) {
+      heatmapMatRef.current.opacity = heatmapIntensity;
+      heatmapMatRef.current.visible = heatmapIntensity > 0.01;
+    }
+  }, [heatmapIntensity]);
+
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
@@ -103,7 +431,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     camera.lookAt(0, 1, 0);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -115,7 +443,8 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     rendererRef.current = renderer;
 
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    const roomEnvTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = roomEnvTexture;
     pmremGenerator.dispose();
 
     const hemiLight = new THREE.HemisphereLight(0x818cf8, 0x0f172a, 0.7);
@@ -149,6 +478,23 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     grid.position.y = 0.01;
     scene.add(grid);
 
+    const heatmapTexture = createVenueHeatmapTexture();
+    const heatmapGeo = new THREE.PlaneGeometry(36, 36, 16, 16);
+    const heatmapMat = new THREE.MeshBasicMaterial({
+      map: heatmapTexture,
+      transparent: true,
+      opacity: heatmapIntensityRef.current,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const heatmapMesh = new THREE.Mesh(heatmapGeo, heatmapMat);
+    heatmapMesh.rotation.x = -Math.PI / 2;
+    heatmapMesh.position.y = 0.025;
+    scene.add(heatmapMesh);
+    heatmapMeshRef.current = heatmapMesh;
+    heatmapMatRef.current = heatmapMat;
+
     const stageGroup = new THREE.Group();
     stageGroup.position.set(0, 0, -13);
     const stageBase = new THREE.Mesh(
@@ -172,6 +518,97 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     ledScreen.position.set(0, 3.5, -2);
     stageGroup.add(ledScreen);
     scene.add(stageGroup);
+
+
+    const hardwareGroup = new THREE.Group();
+    hardwareGroup.name = 'hardware-cameras';
+    cameraMeshesRef.current.clear();
+
+    HARDWARE_CAMERAS.forEach((cam) => {
+      const camGroup = new THREE.Group();
+      camGroup.name = cam.id;
+      camGroup.userData = { isCamera: true, camera: cam };
+      camGroup.position.set(cam.posicao[0], cam.posicao[1], cam.posicao[2]);
+
+      const isFB = cam.tipo === 'fb_liquid';
+      const isSelected = selectedCameraRef.current?.id === cam.id;
+      const defaultColor = isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8;
+      const defaultEmissive = isSelected ? 0x00ffcc : isFB ? 0x059669 : 0x0284c7;
+
+      const mountArm = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 })
+      );
+      mountArm.position.y = 0.25;
+      camGroup.add(mountArm);
+
+
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: defaultColor,
+        emissive: defaultEmissive,
+        emissiveIntensity: isSelected ? 2.0 : isFB ? 0.9 : 0.75,
+        metalness: 0.4,
+        roughness: 0.2,
+      });
+      const bodyMesh = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 12), bodyMat);
+      bodyMesh.rotation.x = Math.PI;
+      bodyMesh.name = `${cam.id}-body`;
+      camGroup.add(bodyMesh);
+
+
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: defaultColor,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.18, 0.28, 16), ringMat);
+      ringMesh.rotation.x = Math.PI / 2;
+      ringMesh.position.y = -0.28;
+      ringMesh.name = `${cam.id}-ring`;
+      camGroup.add(ringMesh);
+
+      const capMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9 })
+      );
+      capMesh.position.y = 0.5;
+      camGroup.add(capMesh);
+
+      const targetDist = cam.posicao[1] - cam.alvo[1];
+      const fovGeo = new THREE.ConeGeometry(1.6, targetDist, 16, 1, true);
+      const fovMat = new THREE.MeshBasicMaterial({
+        color: 0x00ffcc,
+        transparent: true,
+        opacity: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const fovCone = new THREE.Mesh(fovGeo, fovMat);
+      fovCone.position.set(0, -targetDist / 2, 0);
+      fovCone.visible = isSelected;
+      fovCone.name = `${cam.id}-fov`;
+      camGroup.add(fovCone);
+
+      const targetRingGeo = new THREE.RingGeometry(0.9, 1.4, 24);
+      const targetRingMat = new THREE.MeshBasicMaterial({
+        color: 0x00ffcc,
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const targetRing = new THREE.Mesh(targetRingGeo, targetRingMat);
+      targetRing.rotation.x = -Math.PI / 2;
+      targetRing.position.set(0, -targetDist + 0.04, 0);
+      targetRing.visible = isSelected;
+      targetRing.name = `${cam.id}-target-ring`;
+      camGroup.add(targetRing);
+
+      hardwareGroup.add(camGroup);
+      cameraMeshesRef.current.set(cam.id, camGroup);
+    });
+
+    scene.add(hardwareGroup);
 
     interactiveObjectsRef.current.clear();
 
@@ -341,6 +778,24 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
+
+      const cameraGroups: THREE.Object3D[] = [];
+      cameraMeshesRef.current.forEach((grp) => cameraGroups.push(grp));
+      const camIntersects = raycaster.intersectObjects(cameraGroups, true);
+
+      if (camIntersects.length > 0) {
+        let current: THREE.Object3D | null = camIntersects[0].object;
+        while (current && current.parent && current.parent !== scene) {
+          if (cameraMeshesRef.current.has(current.name)) {
+            const camId = current.name;
+            const cam = HARDWARE_CAMERAS.find((c) => c.id === camId) || null;
+            handleSelectCamera(cam);
+            return;
+          }
+          current = current.parent;
+        }
+      }
+
       const objects: THREE.Object3D[] = [];
       interactiveObjectsRef.current.forEach((grp) => objects.push(grp));
       const intersects = raycaster.intersectObjects(objects, true);
@@ -350,14 +805,29 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         while (current && current.parent && current.parent !== scene) {
           if (interactiveObjectsRef.current.has(current.name)) {
             onSelectAtracao(current.name);
-            break;
+            handleSelectCamera(null);
           }
           current = current.parent;
         }
       }
     };
 
+    const handlePointerMove = (event: MouseEvent) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const allInteractives: THREE.Object3D[] = [];
+      cameraMeshesRef.current.forEach((g) => allInteractives.push(g));
+      interactiveObjectsRef.current.forEach((g) => allInteractives.push(g));
+
+      const hits = raycaster.intersectObjects(allInteractives, true);
+      renderer.domElement.style.cursor = hits.length > 0 ? 'pointer' : 'grab';
+    };
+
     renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+    renderer.domElement.addEventListener('pointermove', handlePointerMove);
 
     const handleResize = () => {
       if (!container || !rendererRef.current || !cameraRef.current) return;
@@ -383,6 +853,29 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       _currentLook.lerp(targetLookAtRef.current, dampFactor);
       camera.lookAt(_currentLook);
 
+      if (heatmapMatRef.current && heatmapMatRef.current.visible) {
+        const pulse = 1 + Math.sin(currentTime * 0.003) * 0.04;
+        heatmapMatRef.current.opacity = Math.min(1, heatmapIntensityRef.current * pulse);
+      }
+
+      if (selectedCameraRef.current) {
+        const camGroup = cameraMeshesRef.current.get(selectedCameraRef.current.id);
+        if (camGroup) {
+          const targetRing = camGroup.getObjectByName(`${selectedCameraRef.current.id}-target-ring`);
+          if (targetRing) {
+            targetRing.rotation.z += 0.015;
+          }
+          const s = 1 + Math.sin(currentTime * 0.006) * 0.05;
+          camGroup.scale.set(s, s, s);
+        }
+      }
+
+      cameraMeshesRef.current.forEach((grp, id) => {
+        if (id !== selectedCameraRef.current?.id) {
+          grp.scale.set(1, 1, 1);
+        }
+      });
+
       interactiveObjectsRef.current.forEach((group, id) => {
         if (id === selectedId) {
           const s = 1 + Math.sin(currentTime * 0.005) * 0.04;
@@ -401,6 +894,41 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
+      renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+
+      groundGeo.dispose();
+      groundMat.dispose();
+      heatmapGeo.dispose();
+      heatmapMat.dispose();
+      heatmapTexture.dispose();
+      roomEnvTexture.dispose();
+
+      cameraMeshesRef.current.forEach((grp) => {
+        grp.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else if (child.material) {
+              child.material.dispose();
+            }
+          }
+        });
+      });
+
+      interactiveObjectsRef.current.forEach((grp) => {
+        grp.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry?.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else if (child.material) {
+              child.material.dispose();
+            }
+          }
+        });
+      });
+
       renderer.dispose();
       if (renderer.domElement.parentElement) {
         renderer.domElement.parentElement.removeChild(renderer.domElement);
@@ -409,26 +937,149 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full h-[380px] sm:h-[460px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg">
+    <div className="relative w-full h-[380px] sm:h-[460px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-700 text-xs text-white">
-        <Compass className="w-4 h-4 text-indigo-400" />
-        <span className="font-semibold">Arena 3D Interativa</span>
-        <span className="text-slate-400 hidden sm:inline">· Clique nas atrações para inspecionar</span>
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-xs text-white shadow-md">
+        <Compass className="w-4 h-4 text-cyan-400 animate-spin-slow" />
+        <span className="font-semibold text-slate-100">Arena 3D Interativa</span>
+        <span className="text-slate-400 hidden sm:inline">· 7 Câmeras & F&B Liquid</span>
       </div>
 
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <button
+          onClick={() => setShowHeatmapControls(!showHeatmapControls)}
+          title="Controle de Intensidade do Heatmap"
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors shadow-md ${heatmapIntensity > 0
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+              : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:bg-slate-800'
+            }`}
+        >
+          <Flame className={`w-3.5 h-3.5 ${heatmapIntensity > 0 ? 'text-amber-400 fill-amber-400/30 animate-pulse' : ''}`} />
+          <span>Heatmap {Math.round(heatmapIntensity * 100)}%</span>
+        </button>
+
+        <button
           onClick={toggleLighting}
           title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
-          className="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
+          className="p-2 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors shadow-md"
         >
           {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
         </button>
       </div>
 
-      <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 transition-transform duration-300 max-w-[92vw] ${hudCollapsed ? 'translate-y-[calc(100%-24px)]' : 'translate-y-0'}`}>
+      {showHeatmapControls && (
+        <div className="absolute top-14 right-4 z-20 w-64 p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs space-y-2 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between text-slate-200 font-semibold border-b border-slate-800 pb-1.5">
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <Layers className="w-3.5 h-3.5" />
+              Intensidade do Heatmap
+            </span>
+            <button
+              onClick={() => setShowHeatmapControls(false)}
+              className="text-slate-400 hover:text-white p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between text-[11px] text-slate-400">
+              <span>Opacidade no Solo:</span>
+              <span className="font-mono text-cyan-300">{Math.round(heatmapIntensity * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={heatmapIntensity}
+              onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
+              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/80">
+            {[0, 0.4, 0.75, 1.0].map((presetVal) => (
+              <button
+                key={presetVal}
+                onClick={() => handleIntensityChange(presetVal)}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${Math.abs(heatmapIntensity - presetVal) < 0.05
+                    ? 'bg-cyan-500 text-slate-950 font-bold'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  }`}
+              >
+                {presetVal === 0 ? 'Off' : `${Math.round(presetVal * 100)}%`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selectedCamera && (
+        <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-cyan-400">
+                <Camera className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-100">{selectedCamera.codigo}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/50">
+                    {selectedCamera.fps} FPS
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 truncate max-w-[190px]">{selectedCamera.nome}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleSelectCamera(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              title="Fechar Inspecionar Câmera"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Setor / Área</span>
+              <span className="font-semibold text-slate-200 truncate block">{selectedCamera.setor}</span>
+            </div>
+            <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">{selectedCamera.metricas.rotulo}</span>
+              <span className="font-semibold text-cyan-300 block">{selectedCamera.metricas.valor}</span>
+            </div>
+          </div>
+
+          {selectedCamera.metricas.detalhe && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-950/40 border border-emerald-800/30 text-[10px] text-emerald-300">
+              <Activity className="w-3 h-3 shrink-0" />
+              <span className="truncate">{selectedCamera.metricas.detalhe}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+              <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+              Feed de Telemetria Ativo
+            </span>
+            <button
+              onClick={() => handleSelectCamera(selectedCamera)}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 transition-colors flex items-center gap-1 font-semibold"
+            >
+              <Eye className="w-3 h-3" />
+              Focar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 transition-transform duration-300 max-w-[94vw] ${hudCollapsed ? 'translate-y-[calc(100%-24px)]' : 'translate-y-0'
+          }`}
+      >
         <div className="flex flex-col items-center">
           <button
             onClick={() => setHudCollapsed(!hudCollapsed)}
@@ -447,41 +1098,59 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             )}
           </button>
 
-          <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-slate-900 border border-slate-700 shadow-xl">
-            <span className="text-[11px] text-slate-400 px-2 font-medium hidden sm:inline">Câmera:</span>
-            
+          <div className="flex flex-wrap items-center justify-center gap-1 p-1.5 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700 shadow-xl">
+            <span className="text-[11px] text-slate-400 px-1.5 font-medium hidden sm:inline">Perspectiva:</span>
+
             <button
               onClick={() => applyPreset('geral')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'geral' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'geral' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Visão Geral
             </button>
 
             <button
               onClick={() => applyPreset('autos')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'autos' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'autos' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
-              Totens Autosserviço
+              Totens Chopp
+            </button>
+
+            <button
+              onClick={() => applyPreset('cams_fb')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activePreset === 'cams_fb'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40 hover:bg-emerald-900/50'
+                }`}
+            >
+              <Camera className="w-3 h-3" />
+              <span>Câmeras F&B (3)</span>
+            </button>
+
+            <button
+              onClick={() => applyPreset('cams_ent')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activePreset === 'cams_ent'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-sky-300 bg-sky-950/40 border border-sky-800/40 hover:bg-sky-900/50'
+                }`}
+            >
+              <Camera className="w-3 h-3" />
+              <span>Entrada (4)</span>
             </button>
 
             <button
               onClick={() => applyPreset('instas')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'instas' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'instas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
-              Cenários Instagramáveis
+              Instagramáveis
             </button>
 
             <button
               onClick={() => applyPreset('aerea')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'aerea' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'aerea' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Vista Aérea
             </button>
