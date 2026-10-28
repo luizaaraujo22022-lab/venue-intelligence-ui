@@ -36,13 +36,8 @@ export interface HardwareCamera {
   };
 }
 
-/**
- * Configuração dos 7 Marcadores de Hardware:
- * - 4 de entrada no perímetro (controle de acesso)
- * - 3 internas focadas na operação de F&B / Chopp / Liquid
- */
 export const HARDWARE_CAMERAS: HardwareCamera[] = [
-  // 4 Câmeras de Entrada no Perímetro
+
   {
     id: 'cam-ent-01',
     codigo: 'CAM-ENT-01',
@@ -108,7 +103,6 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     },
   },
 
-  // 3 Câmeras Internas focadas na Operação de F&B / Chopp
   {
     id: 'cam-fb-01',
     codigo: 'CAM-FB-01',
@@ -164,7 +158,7 @@ export interface Venue3DSceneProps {
   instas: InstagramavelItem[];
   selectedId: string | null;
   onSelectAtracao: (id: string) => void;
-  // Props de Câmeras e Heatmap Operacional
+
   selectedCameraId?: string | null;
   onSelectCamera?: (camera: HardwareCamera | null) => void;
   heatmapIntensity?: number;
@@ -173,9 +167,6 @@ export interface Venue3DSceneProps {
 
 const _currentLook = new THREE.Vector3(0, 0, 0);
 
-/**
- * Cria textura procedural para o mapa de calor da arena com foco na operação de F&B
- */
 function createVenueHeatmapTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -187,27 +178,24 @@ function createVenueHeatmapTexture(): THREE.CanvasTexture {
   ctx.fillStyle = 'rgba(0, 0, 0, 0)';
   ctx.fillRect(0, 0, 512, 512);
 
-  // Mapeia coordenadas [-18, 18] para coordenadas de textura [0, 512]
   const toCanvas = (x: number, z: number): [number, number] => {
     const u = ((x + 18) / 36) * 512;
     const v = ((z + 18) / 36) * 512;
     return [u, v];
   };
 
-  // Pontos térmicos da operação F&B / Totens / Entradas
   const heatPoints = [
-    // Hub Chopp Oeste (Alta densidade)
     { x: -5, z: 2, radius: 95, colorInner: 'rgba(239, 68, 68, 0.95)', colorMid: 'rgba(249, 115, 22, 0.75)' },
-    // Estação Central Liquid (Ponto focal)
+
     { x: 0, z: -2, radius: 105, colorInner: 'rgba(239, 68, 68, 0.9)', colorMid: 'rgba(250, 204, 21, 0.7)' },
-    // Hub Chopp Leste
+
     { x: 5, z: 2, radius: 90, colorInner: 'rgba(249, 115, 22, 0.9)', colorMid: 'rgba(250, 204, 21, 0.65)' },
-    // Entradas do perímetro (filas de acesso)
+
     { x: -4, z: 12, radius: 55, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
     { x: -1, z: 12, radius: 45, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
     { x: 1, z: 12, radius: 60, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
     { x: 4, z: 12, radius: 50, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
-    // Palco & Circulação Geral
+
     { x: 0, z: -11, radius: 110, colorInner: 'rgba(168, 85, 247, 0.65)', colorMid: 'rgba(59, 130, 246, 0.3)' },
   ];
 
@@ -242,13 +230,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
-  // Estados locais interativos
   const [isNightMode, setIsNightMode] = useState(true);
   const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent'>('geral');
   const [hudCollapsed, setHudCollapsed] = useState(false);
   const [showHeatmapControls, setShowHeatmapControls] = useState(false);
 
-  // 1. Estado interativo de Câmera de Hardware selecionada
   const [selectedCamera, setSelectedCamera] = useState<HardwareCamera | null>(() => {
     if (selectedCameraId) {
       return HARDWARE_CAMERAS.find((c) => c.id === selectedCameraId) || null;
@@ -256,12 +242,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     return null;
   });
 
-  // 2. Estado de intensidade/opacidade dinâmica do Heatmap
+
   const [heatmapIntensity, setHeatmapIntensity] = useState<number>(
     propHeatmapIntensity !== undefined ? propHeatmapIntensity : 0.75
   );
 
-  // Sincronização de props externas
   useEffect(() => {
     if (selectedCameraId !== undefined) {
       const found = HARDWARE_CAMERAS.find((c) => c.id === selectedCameraId) || null;
@@ -275,7 +260,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   }, [propHeatmapIntensity]);
 
-  // Referências Three.js para garantir excelente performance sem recriar cena
+
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -288,7 +273,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const heatmapMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
   const heatmapMeshRef = useRef<THREE.Mesh | null>(null);
 
-  // Refs de estado ativo para uso direto no loop de animação sem closures desatualizadas
   const selectedCameraRef = useRef<HardwareCamera | null>(selectedCamera);
   selectedCameraRef.current = selectedCamera;
 
@@ -309,7 +293,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     onSelectCamera?.(cam);
 
     if (cam) {
-      // Zoom suave na posição de monitoramento da câmera
+
       targetCamPosRef.current.set(
         cam.posicao[0] * 0.75,
         cam.posicao[1] + 3.2,
@@ -334,13 +318,13 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       targetCamPosRef.current.set(0, 26, 0.1);
       targetLookAtRef.current.set(0, 0, 0);
     } else if (preset === 'cams_fb') {
-      // Enquadramento nos 3 hubs de Chopp/F&B
+
       targetCamPosRef.current.set(0, 10, 12);
       targetLookAtRef.current.set(0, 1.5, 1);
       const firstFb = HARDWARE_CAMERAS.find((c) => c.tipo === 'fb_liquid');
       if (firstFb) handleSelectCamera(firstFb);
     } else if (preset === 'cams_ent') {
-      // Enquadramento no perímetro de entrada
+
       targetCamPosRef.current.set(0, 8, 20);
       targetLookAtRef.current.set(0, 1.5, 12);
       const firstEnt = HARDWARE_CAMERAS.find((c) => c.tipo === 'entrada_perimetro');
@@ -372,7 +356,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   };
 
-  // Reage à seleção de atração vinda de fora
   useEffect(() => {
     if (!selectedId) return;
     const auto = autos.find((a) => a.id === selectedId);
@@ -385,7 +368,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   }, [selectedId, autos, instas]);
 
-  // Atualização visual dos marcadores de câmera quando o estado selectedCamera muda
+
   useEffect(() => {
     cameraMeshesRef.current.forEach((group, id) => {
       const isSelected = selectedCamera?.id === id;
@@ -400,12 +383,12 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       if (bodyMesh && bodyMesh.material) {
         const mat = bodyMesh.material as THREE.MeshStandardMaterial;
         if (isSelected) {
-          // Destaque visual tipo #00ffcc conforme especificação
+
           mat.color.set(0x00ffcc);
           mat.emissive.set(0x00ffcc);
           mat.emissiveIntensity = 2.0;
         } else {
-          // Cores normais: Verde para F&B Chopp, Azul para Entrada Perímetro
+
           const colorHex = isFB ? 0x34d399 : 0x38bdf8;
           const emissiveHex = isFB ? 0x059669 : 0x0284c7;
           mat.color.set(colorHex);
@@ -419,13 +402,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         rMat.color.set(isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8);
       }
 
-      // Projeção visual de campo de visão e anel no solo ativados quando selecionado
       if (fovCone) fovCone.visible = isSelected;
       if (targetRing) targetRing.visible = isSelected;
     });
   }, [selectedCamera]);
 
-  // Reação dinâmica da intensidade do Heatmap no material Three.js
   useEffect(() => {
     if (heatmapMatRef.current) {
       heatmapMatRef.current.opacity = heatmapIntensity;
@@ -433,7 +414,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     }
   }, [heatmapIntensity]);
 
-  // Inicialização e montagem da Cena 3D WebGL (ciclo de vida limpo e performático)
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
@@ -467,7 +447,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     scene.environment = roomEnvTexture;
     pmremGenerator.dispose();
 
-    // Iluminação
     const hemiLight = new THREE.HemisphereLight(0x818cf8, 0x0f172a, 0.7);
     scene.add(hemiLight);
     hemiLightRef.current = hemiLight;
@@ -484,7 +463,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     scene.add(dirLight);
     dirLightRef.current = dirLight;
 
-    // Solo Base
     const groundGeo = new THREE.PlaneGeometry(40, 40, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x111827,
@@ -496,12 +474,10 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Grid Operacional
     const grid = new THREE.GridHelper(36, 36, 0x312e81, 0x1e293b);
     grid.position.y = 0.01;
     scene.add(grid);
 
-    // --- 2. HEATMAP DINÂMICO NA GEOMETRIA BASE ---
     const heatmapTexture = createVenueHeatmapTexture();
     const heatmapGeo = new THREE.PlaneGeometry(36, 36, 16, 16);
     const heatmapMat = new THREE.MeshBasicMaterial({
@@ -519,7 +495,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     heatmapMeshRef.current = heatmapMesh;
     heatmapMatRef.current = heatmapMat;
 
-    // Palco Principal
     const stageGroup = new THREE.Group();
     stageGroup.position.set(0, 0, -13);
     const stageBase = new THREE.Mesh(
@@ -544,7 +519,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     stageGroup.add(ledScreen);
     scene.add(stageGroup);
 
-    // --- 1. CRIAÇÃO DOS 7 MARCADORES DE HARDWARE INTERATIVOS ---
+
     const hardwareGroup = new THREE.Group();
     hardwareGroup.name = 'hardware-cameras';
     cameraMeshesRef.current.clear();
@@ -560,7 +535,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       const defaultColor = isSelected ? 0x00ffcc : isFB ? 0x34d399 : 0x38bdf8;
       const defaultEmissive = isSelected ? 0x00ffcc : isFB ? 0x059669 : 0x0284c7;
 
-      // Haste de montagem
       const mountArm = new THREE.Mesh(
         new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8),
         new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 })
@@ -568,7 +542,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       mountArm.position.y = 0.25;
       camGroup.add(mountArm);
 
-      // Corpo da câmera (cone invertido estilo sensor de teto/perímetro)
+
       const bodyMat = new THREE.MeshStandardMaterial({
         color: defaultColor,
         emissive: defaultEmissive,
@@ -577,11 +551,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         roughness: 0.2,
       });
       const bodyMesh = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.55, 12), bodyMat);
-      bodyMesh.rotation.x = Math.PI; // Apontado para baixo
+      bodyMesh.rotation.x = Math.PI;
       bodyMesh.name = `${cam.id}-body`;
       camGroup.add(bodyMesh);
 
-      // Anel ótico emissivo
+
       const ringMat = new THREE.MeshBasicMaterial({
         color: defaultColor,
         transparent: true,
@@ -593,7 +567,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       ringMesh.name = `${cam.id}-ring`;
       camGroup.add(ringMesh);
 
-      // Conector de ancoragem no topo
       const capMesh = new THREE.Mesh(
         new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12),
         new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9 })
@@ -601,7 +574,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       capMesh.position.y = 0.5;
       camGroup.add(capMesh);
 
-      // Projeção visual do Campo de Visão (FOV) até o solo quando selecionado
       const targetDist = cam.posicao[1] - cam.alvo[1];
       const fovGeo = new THREE.ConeGeometry(1.6, targetDist, 16, 1, true);
       const fovMat = new THREE.MeshBasicMaterial({
@@ -617,7 +589,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       fovCone.name = `${cam.id}-fov`;
       camGroup.add(fovCone);
 
-      // Anel de mira no piso
       const targetRingGeo = new THREE.RingGeometry(0.9, 1.4, 24);
       const targetRingMat = new THREE.MeshBasicMaterial({
         color: 0x00ffcc,
@@ -639,7 +610,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
     scene.add(hardwareGroup);
 
-    // --- MODELOS DE AUTOSSERVIÇO & INSTAGRAMÁVEL ---
     interactiveObjectsRef.current.clear();
 
     const createAutosservicoModel = (auto: AutosservicoItem) => {
@@ -799,7 +769,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       interactiveObjectsRef.current.set(i.id, model);
     });
 
-    // --- RAYCASTER PARA INTERATIVIDADE (CÂMERAS + ATRAÇÕES) ---
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -810,7 +779,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
       raycaster.setFromCamera(mouse, camera);
 
-      // 1. Checa interseção primeiro com as Câmeras de Hardware
       const cameraGroups: THREE.Object3D[] = [];
       cameraMeshesRef.current.forEach((grp) => cameraGroups.push(grp));
       const camIntersects = raycaster.intersectObjects(cameraGroups, true);
@@ -828,7 +796,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         }
       }
 
-      // 2. Checa interseção com Totens de Autosserviço e Instagramáveis
       const objects: THREE.Object3D[] = [];
       interactiveObjectsRef.current.forEach((grp) => objects.push(grp));
       const intersects = raycaster.intersectObjects(objects, true);
@@ -838,8 +805,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         while (current && current.parent && current.parent !== scene) {
           if (interactiveObjectsRef.current.has(current.name)) {
             onSelectAtracao(current.name);
-            handleSelectCamera(null); // desmarca câmera ao focar atração
-            return;
+            handleSelectCamera(null);
           }
           current = current.parent;
         }
@@ -874,7 +840,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
     window.addEventListener('resize', handleResize);
 
-    // --- LOOP DE RENDERIZAÇÃO 60 FPS COM INTERPOLAÇÃO SUAVE ---
     let animationFrameId: number;
     let lastTime = performance.now();
 
@@ -888,13 +853,11 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       _currentLook.lerp(targetLookAtRef.current, dampFactor);
       camera.lookAt(_currentLook);
 
-      // Pulsação sutil e dinâmica do Heatmap para dar vida aos fluxos operacionais
       if (heatmapMatRef.current && heatmapMatRef.current.visible) {
         const pulse = 1 + Math.sin(currentTime * 0.003) * 0.04;
         heatmapMatRef.current.opacity = Math.min(1, heatmapIntensityRef.current * pulse);
       }
 
-      // Animação de realce e rotação do alvo da câmera selecionada
       if (selectedCameraRef.current) {
         const camGroup = cameraMeshesRef.current.get(selectedCameraRef.current.id);
         if (camGroup) {
@@ -907,14 +870,12 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         }
       }
 
-      // Restaura escala normal das câmeras não selecionadas
       cameraMeshesRef.current.forEach((grp, id) => {
         if (id !== selectedCameraRef.current?.id) {
           grp.scale.set(1, 1, 1);
         }
       });
 
-      // Efeito pulsante nas atrações selecionadas
       interactiveObjectsRef.current.forEach((group, id) => {
         if (id === selectedId) {
           const s = 1 + Math.sin(currentTime * 0.005) * 0.04;
@@ -929,14 +890,12 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
     animationFrameId = requestAnimationFrame(animate);
 
-    // --- LIMPEZA DE MEMÓRIA COMPLETA (SEM MEMORY LEAKS) ---
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
       renderer.domElement.removeEventListener('pointermove', handlePointerMove);
 
-      // Descarte de geometrias e materiais
       groundGeo.dispose();
       groundMat.dispose();
       heatmapGeo.dispose();
@@ -981,30 +940,25 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     <div className="relative w-full h-[380px] sm:h-[460px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none">
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* Badge Superior Esquerdo */}
       <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-xs text-white shadow-md">
         <Compass className="w-4 h-4 text-cyan-400 animate-spin-slow" />
         <span className="font-semibold text-slate-100">Arena 3D Interativa</span>
         <span className="text-slate-400 hidden sm:inline">· 7 Câmeras & F&B Liquid</span>
       </div>
 
-      {/* Controles do Canto Superior Direito (Iluminação + Heatmap Toggle) */}
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        {/* Botão de Controle do Heatmap */}
         <button
           onClick={() => setShowHeatmapControls(!showHeatmapControls)}
           title="Controle de Intensidade do Heatmap"
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors shadow-md ${
-            heatmapIntensity > 0
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors shadow-md ${heatmapIntensity > 0
               ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
               : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:bg-slate-800'
-          }`}
+            }`}
         >
           <Flame className={`w-3.5 h-3.5 ${heatmapIntensity > 0 ? 'text-amber-400 fill-amber-400/30 animate-pulse' : ''}`} />
           <span>Heatmap {Math.round(heatmapIntensity * 100)}%</span>
         </button>
 
-        {/* Alternador Dia / Noite */}
         <button
           onClick={toggleLighting}
           title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
@@ -1014,7 +968,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         </button>
       </div>
 
-      {/* Popover / Drawer de Ajuste Fino do Heatmap */}
       {showHeatmapControls && (
         <div className="absolute top-14 right-4 z-20 w-64 p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs space-y-2 animate-in fade-in duration-150">
           <div className="flex items-center justify-between text-slate-200 font-semibold border-b border-slate-800 pb-1.5">
@@ -1051,11 +1004,10 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
               <button
                 key={presetVal}
                 onClick={() => handleIntensityChange(presetVal)}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  Math.abs(heatmapIntensity - presetVal) < 0.05
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${Math.abs(heatmapIntensity - presetVal) < 0.05
                     ? 'bg-cyan-500 text-slate-950 font-bold'
                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
+                  }`}
               >
                 {presetVal === 0 ? 'Off' : `${Math.round(presetVal * 100)}%`}
               </button>
@@ -1064,7 +1016,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         </div>
       )}
 
-      {/* Card Inspector de Câmera de Hardware Selecionada */}
       {selectedCamera && (
         <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-2">
@@ -1125,11 +1076,9 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         </div>
       )}
 
-      {/* HUD Inferior de Navegação e Presets de Câmera */}
       <div
-        className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 transition-transform duration-300 max-w-[94vw] ${
-          hudCollapsed ? 'translate-y-[calc(100%-24px)]' : 'translate-y-0'
-        }`}
+        className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 transition-transform duration-300 max-w-[94vw] ${hudCollapsed ? 'translate-y-[calc(100%-24px)]' : 'translate-y-0'
+          }`}
       >
         <div className="flex flex-col items-center">
           <button
@@ -1154,29 +1103,26 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
             <button
               onClick={() => applyPreset('geral')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'geral' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'geral' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Visão Geral
             </button>
 
             <button
               onClick={() => applyPreset('autos')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'autos' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'autos' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Totens Chopp
             </button>
 
             <button
               onClick={() => applyPreset('cams_fb')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activePreset === 'cams_fb'
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activePreset === 'cams_fb'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-emerald-300 bg-emerald-950/40 border border-emerald-800/40 hover:bg-emerald-900/50'
-              }`}
+                }`}
             >
               <Camera className="w-3 h-3" />
               <span>Câmeras F&B (3)</span>
@@ -1184,11 +1130,10 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
             <button
               onClick={() => applyPreset('cams_ent')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-                activePreset === 'cams_ent'
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${activePreset === 'cams_ent'
                   ? 'bg-sky-600 text-white shadow-sm'
                   : 'text-sky-300 bg-sky-950/40 border border-sky-800/40 hover:bg-sky-900/50'
-              }`}
+                }`}
             >
               <Camera className="w-3 h-3" />
               <span>Entrada (4)</span>
@@ -1196,18 +1141,16 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
             <button
               onClick={() => applyPreset('instas')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'instas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'instas' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Instagramáveis
             </button>
 
             <button
               onClick={() => applyPreset('aerea')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'aerea' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'aerea' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Vista Aérea
             </button>
