@@ -17,10 +17,9 @@ import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
 import { SinteseAcumulada } from './components/SinteseAcumulada';
 import { TerminalCLI } from './components/TerminalCLI';
-import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
-import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
-import { gerarAlertasPreditivos } from './utils/predicao';
-import { toZonaPublico } from './utils/publico';
+import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
+import { ApiToast } from './components/ui/ApiToast';
+import { useOpsActions } from './hooks/useOpsActions';
 
 // Ajusta o caminho abaixo se os dados iniciais estiverem em './data/mockData' ou noutro ficheiro de mocks
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
@@ -38,6 +37,7 @@ export default function App() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
   const [lastUpdate, setLastUpdate] = useState('04:15:40');
   const [pingLatency, setPingLatency] = useState(431);
+  const { ocupado, feedback, despachoOps, vendaExpress, limparFeedback } = useOpsActions();
 
   const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
@@ -452,8 +452,10 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => handleSimularPicoDeFluxo()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95"
+              onClick={() => void despachoOps()}
+              disabled={ocupado === 'despacho'}
+              title="Registra uma intervenção na API para a zona mais crítica"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-wait"
             >
               <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
               <span>Despacho Ops</span>
@@ -554,6 +556,7 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        <ApiToast feedback={feedback} onClose={limparFeedback} />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
           <div>
             <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
@@ -585,6 +588,13 @@ export default function App() {
               selectedId={selectedAtracaoId}
               onSelectAtracao={(id) => setSelectedAtracaoId(id)}
             />
+          </div>
+        )}
+
+        {/* Telemetria das 7 câmeras (dados da API) */}
+        {activeTab === 'tudo' && (
+          <div className="animate-in fade-in duration-200">
+            <CameraTelemetryPanel />
           </div>
         )}
 
@@ -632,7 +642,13 @@ export default function App() {
                   key={item.id}
                   item={item}
                   isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={handleSimularTransacao}
+                  onSimularTransacao={(id, valor) => {
+                    handleSimularTransacao(id, valor);
+                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
+                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                    });
+                  }}
                   onReabastecer={handleReabastecer}
                   onToggleManutencao={handleToggleManutencao}
                   onSelectIn3D={(id) => {
