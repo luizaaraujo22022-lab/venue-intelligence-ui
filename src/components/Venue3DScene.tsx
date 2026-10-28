@@ -173,6 +173,49 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     stageGroup.add(ledScreen);
     scene.add(stageGroup);
 
+    // --- MARCADORES DE HARDWARE (7 Câmeras) ---
+    const hardwareGroup = new THREE.Group();
+    hardwareGroup.name = 'hardware-cameras';
+
+    // Posições das 4 Câmeras de Entrada (nas filas de acesso)
+    const entradaPositions: [number, number, number][] = [
+      [-4, 4, 12],
+      [-1, 4, 12],
+      [1, 4, 12],
+      [4, 4, 12],
+    ];
+
+    // Posições das 3 Câmeras Internas (nos bares/totens)
+    const internaPositions: [number, number, number][] = [
+      [-5, 5, 2],
+      [0, 5, -2],
+      [5, 5, 2],
+    ];
+
+    // Criar marcadores visuais para as Câmeras de Entrada (Azul)
+    entradaPositions.forEach((pos, index) => {
+      const camMesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.3, 0.6, 8),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.8 })
+      );
+      camMesh.position.set(pos[0], pos[1], pos[2]);
+      camMesh.rotation.x = Math.PI; // Apontar para baixo
+      hardwareGroup.add(camMesh);
+    });
+
+    // Criar marcadores visuais para as Câmeras Internas (Verde/Chopp)
+    internaPositions.forEach((pos, index) => {
+      const camMesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.3, 0.6, 8),
+        new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x059669, emissiveIntensity: 0.8 })
+      );
+      camMesh.position.set(pos[0], pos[1], pos[2]);
+      camMesh.rotation.x = Math.PI;
+      hardwareGroup.add(camMesh);
+    });
+
+    scene.add(hardwareGroup);
+
     interactiveObjectsRef.current.clear();
 
     const createAutosservicoModel = (auto: AutosservicoItem) => {
@@ -449,39 +492,35 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
           <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-slate-900 border border-slate-700 shadow-xl">
             <span className="text-[11px] text-slate-400 px-2 font-medium hidden sm:inline">Câmera:</span>
-            
+
             <button
               onClick={() => applyPreset('geral')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'geral' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'geral' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Visão Geral
             </button>
 
             <button
               onClick={() => applyPreset('autos')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'autos' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'autos' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Totens Autosserviço
             </button>
 
             <button
               onClick={() => applyPreset('instas')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'instas' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'instas' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Cenários Instagramáveis
             </button>
 
             <button
               onClick={() => applyPreset('aerea')}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'aerea' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
+              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${activePreset === 'aerea' ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`}
             >
               Vista Aérea
             </button>
