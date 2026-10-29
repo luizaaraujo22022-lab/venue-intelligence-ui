@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { AutosservicoItem, InstagramavelItem } from '../types/venue';
+import { ZONES_DATA, getHeatmapColor } from '../App';
 import {
   Sun,
   Moon,
@@ -10,13 +11,12 @@ import {
   ChevronDown,
   ChevronUp,
   Camera,
-  Flame,
   X,
   Activity,
-  Layers,
   Radio,
   Eye,
 } from 'lucide-react';
+import { HeatmapLegendControls } from './HeatmapLegendControls';
 
 export type TipoCamera = 'entrada_perimetro' | 'fb_liquid';
 
@@ -180,34 +180,65 @@ function createVenueHeatmapTexture(): THREE.CanvasTexture {
     return [u, v];
   };
 
-  const heatPoints = [
-    { x: -5, z: 2, radius: 95, colorInner: 'rgba(239, 68, 68, 0.95)', colorMid: 'rgba(249, 115, 22, 0.75)' },
-    { x: 0, z: -2, radius: 105, colorInner: 'rgba(239, 68, 68, 0.9)', colorMid: 'rgba(250, 204, 21, 0.7)' },
-    { x: 5, z: 2, radius: 90, colorInner: 'rgba(249, 115, 22, 0.9)', colorMid: 'rgba(250, 204, 21, 0.65)' },
-    { x: -4, z: 12, radius: 55, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
-    { x: -1, z: 12, radius: 45, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
-    { x: 1, z: 12, radius: 60, colorInner: 'rgba(250, 204, 21, 0.8)', colorMid: 'rgba(59, 130, 246, 0.4)' },
-    { x: 4, z: 12, radius: 50, colorInner: 'rgba(16, 185, 129, 0.7)', colorMid: 'rgba(59, 130, 246, 0.35)' },
-    { x: 0, z: -11, radius: 110, colorInner: 'rgba(168, 85, 247, 0.65)', colorMid: 'rgba(59, 130, 246, 0.3)' },
-  ];
+  ZONES_DATA.forEach((zone) => {
+    const [cx, cy] = toCanvas(zone.x, zone.z);
+    const radius = 55 + (zone.occupancy / 100) * 45;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
 
-  heatPoints.forEach((pt) => {
-    const [cx, cy] = toCanvas(pt.x, pt.z);
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pt.radius);
-    grad.addColorStop(0, pt.colorInner);
-    grad.addColorStop(0.35, pt.colorMid);
-    grad.addColorStop(0.7, 'rgba(37, 99, 235, 0.25)');
-    grad.addColorStop(1, 'rgba(37, 99, 235, 0)');
+    if (zone.occupancy >= 85) {
+      grad.addColorStop(0, 'rgba(239, 68, 68, 0.95)');
+      grad.addColorStop(0.35, 'rgba(249, 115, 22, 0.7)');
+      grad.addColorStop(0.75, 'rgba(239, 68, 68, 0.2)');
+    } else if (zone.occupancy >= 50) {
+      grad.addColorStop(0, 'rgba(245, 158, 11, 0.9)');
+      grad.addColorStop(0.35, 'rgba(250, 204, 21, 0.65)');
+      grad.addColorStop(0.75, 'rgba(245, 158, 11, 0.2)');
+    } else {
+      grad.addColorStop(0, 'rgba(16, 185, 129, 0.85)');
+      grad.addColorStop(0.35, 'rgba(6, 182, 212, 0.6)');
+      grad.addColorStop(0.75, 'rgba(16, 185, 129, 0.15)');
+    }
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(cx, cy, pt.radius, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
   });
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
   return texture;
+}
+
+function createSoftZoneHeatmapTexture(colorHex: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+
+  ctx.clearRect(0, 0, 256, 256);
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+
+  const c = new THREE.Color(colorHex);
+  const r = Math.round(c.r * 255);
+  const g = Math.round(c.g * 255);
+  const b = Math.round(c.b * 255);
+
+  grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.88)`);
+  grad.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, 0.6)`);
+  grad.addColorStop(0.72, `rgba(${r}, ${g}, ${b}, 0.22)`);
+  grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(128, 128, 128, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
 }
 
 export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
@@ -225,7 +256,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const [isNightMode, setIsNightMode] = useState(true);
   const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent'>('geral');
   const [hudCollapsed, setHudCollapsed] = useState(false);
-  const [showHeatmapControls, setShowHeatmapControls] = useState(false);
 
   const [selectedCamera, setSelectedCamera] = useState<HardwareCamera | null>(() => {
     if (selectedCameraId) {
@@ -261,8 +291,12 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const targetLookAtRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.5, 4.0));
   const isInteractingRef = useRef<boolean>(false);
 
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const dirLightRef = useRef<THREE.DirectionalLight | null>(null);
   const hemiLightRef = useRef<THREE.HemisphereLight | null>(null);
+  const zoneMaterialsRef = useRef<THREE.MeshBasicMaterial[]>([]);
+  const flowLinesMatRef = useRef<THREE.LineDashedMaterial[]>([]);
+  const zoneSpritesRef = useRef<THREE.Sprite[]>([]);
   const interactiveObjectsRef = useRef<Map<string, THREE.Group>>(new Map());
   const cameraMeshesRef = useRef<Map<string, THREE.Group>>(new Map());
   const heatmapMatRef = useRef<THREE.MeshBasicMaterial | null>(null);
@@ -276,11 +310,25 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
   const handleIntensityChange = (val: number) => {
     setHeatmapIntensity(val);
+    heatmapIntensityRef.current = val;
     onHeatmapIntensityChange?.(val);
     if (heatmapMatRef.current) {
       heatmapMatRef.current.opacity = val;
       heatmapMatRef.current.visible = val > 0.01;
     }
+    const ratio = Math.max(0, Math.min(1, val));
+    zoneMaterialsRef.current.forEach((mat) => {
+      mat.opacity = 0.8 * ratio;
+      mat.visible = ratio > 0.01;
+    });
+    flowLinesMatRef.current.forEach((mat) => {
+      mat.opacity = 0.85 * ratio;
+      mat.visible = ratio > 0.01;
+    });
+    zoneSpritesRef.current.forEach((sprite) => {
+      sprite.material.opacity = ratio > 0.05 ? 0.95 : 0;
+      sprite.visible = ratio > 0.01;
+    });
   };
 
   const handleSelectCamera = (cam: HardwareCamera | null) => {
@@ -329,22 +377,26 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     setIsNightMode(nextNight);
     if (!sceneRef.current || !dirLightRef.current || !hemiLightRef.current) return;
 
+    if (ambientLightRef.current) {
+      ambientLightRef.current.intensity = nextNight ? 0.3 : 0.8;
+    }
+
     if (nextNight) {
       sceneRef.current.background = new THREE.Color(0x090d16);
       if (sceneRef.current.fog) (sceneRef.current.fog as THREE.Fog).color.set(0x090d16);
       dirLightRef.current.color.set(0x6366f1);
-      dirLightRef.current.intensity = 1.2;
-      hemiLightRef.current.color.set(0x818cf8);
-      hemiLightRef.current.groundColor.set(0x0f172a);
-      hemiLightRef.current.intensity = 0.6;
+      dirLightRef.current.intensity = 0.6;
+      hemiLightRef.current.color.set(0x4338ca);
+      hemiLightRef.current.groundColor.set(0x090d16);
+      hemiLightRef.current.intensity = 0.25;
     } else {
       sceneRef.current.background = new THREE.Color(0xf1f5f9);
       if (sceneRef.current.fog) (sceneRef.current.fog as THREE.Fog).color.set(0xf1f5f9);
       dirLightRef.current.color.set(0xfffaed);
-      dirLightRef.current.intensity = 2.4;
+      dirLightRef.current.intensity = 2.0;
       hemiLightRef.current.color.set(0xbae6fd);
       hemiLightRef.current.groundColor.set(0xe2e8f0);
-      hemiLightRef.current.intensity = 1.0;
+      hemiLightRef.current.intensity = 0.8;
     }
   };
 
@@ -455,11 +507,16 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     scene.environment = roomEnvTexture;
     pmremGenerator.dispose();
 
-    const hemiLight = new THREE.HemisphereLight(0x818cf8, 0x0f172a, 0.7);
+    // 4. Luz Ambiente Controlada (<ambientLight intensity={0.3} />)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
+
+    const hemiLight = new THREE.HemisphereLight(0x4338ca, 0x090d16, 0.25);
     scene.add(hemiLight);
     hemiLightRef.current = hemiLight;
 
-    const dirLight = new THREE.DirectionalLight(0x6366f1, 1.4);
+    const dirLight = new THREE.DirectionalLight(0x6366f1, 0.6);
     dirLight.position.set(10, 20, 12);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 1024;
@@ -473,9 +530,9 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
     const groundGeo = new THREE.PlaneGeometry(40, 40, 32, 32);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      roughness: 0.85,
-      metalness: 0.15,
+      color: 0x0b0f19,
+      roughness: 0.9,
+      metalness: 0.1,
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
@@ -502,6 +559,167 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
     scene.add(heatmapMesh);
     heatmapMeshRef.current = heatmapMesh;
     heatmapMatRef.current = heatmapMat;
+
+    // 1. Projeção de Calor Suave no Chão com Discos Planos Translúcidos (meshBasicMaterial)
+    // 3. Etiquetas Flutuantes das Zonas (ex: Z1: 16p - 86%)
+    const zoneGroup = new THREE.Group();
+    zoneGroup.name = 'heatmap-zones';
+    const zoneMats: THREE.MeshBasicMaterial[] = [];
+    const zoneSprites: THREE.Sprite[] = [];
+
+    ZONES_DATA.forEach((zone) => {
+      const colorHex = getHeatmapColor(zone.occupancy);
+      const softTex = createSoftZoneHeatmapTexture(colorHex);
+
+      // Disco plano translúcido no chão com meshBasicMaterial e depthWrite=false
+      const diskRadius = 1.6 + (zone.occupancy / 100) * 0.45;
+      const diskGeo = new THREE.PlaneGeometry(diskRadius * 2, diskRadius * 2);
+      const diskMat = new THREE.MeshBasicMaterial({
+        map: softTex,
+        transparent: true,
+        opacity: 0.8 * heatmapIntensityRef.current,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.NormalBlending,
+      });
+      zoneMats.push(diskMat);
+
+      const diskMesh = new THREE.Mesh(diskGeo, diskMat);
+      diskMesh.rotation.x = -Math.PI / 2;
+      diskMesh.position.set(zone.x, 0.03, zone.z);
+      zoneGroup.add(diskMesh);
+
+      // Anel sutil de contorno elegante no chão
+      const ringGeo = new THREE.RingGeometry(diskRadius * 0.72, diskRadius * 0.78, 36);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(colorHex),
+        transparent: true,
+        opacity: 0.45 * heatmapIntensityRef.current,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+      zoneMats.push(ringMat);
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.rotation.x = -Math.PI / 2;
+      ringMesh.position.set(zone.x, 0.032, zone.z);
+      zoneGroup.add(ringMesh);
+
+      // 3. Etiqueta Flutuante da Zona (ex: Z1: 16p - 86%) logo acima da mancha de calor
+      const badgeCanvas = document.createElement('canvas');
+      badgeCanvas.width = 360;
+      badgeCanvas.height = 96;
+      const bCtx = badgeCanvas.getContext('2d');
+      if (bCtx) {
+        // Fundo escuro com cantos arredondados
+        bCtx.fillStyle = 'rgba(11, 15, 25, 0.95)';
+        if (typeof bCtx.roundRect === 'function') {
+          bCtx.roundRect(8, 8, 344, 80, 16);
+        } else {
+          bCtx.rect(8, 8, 344, 80);
+        }
+        bCtx.fill();
+
+        // Borda na cor correspondente ao nível de concentração
+        bCtx.lineWidth = 4;
+        bCtx.strokeStyle = colorHex;
+        bCtx.stroke();
+
+        // Indicador circular da cor
+        bCtx.fillStyle = colorHex;
+        bCtx.beginPath();
+        bCtx.arc(36, 48, 9, 0, Math.PI * 2);
+        bCtx.fill();
+
+        // Texto branco no formato ex: "Z1: 16p - 86%"
+        bCtx.fillStyle = '#FFFFFF';
+        bCtx.font = 'bold 32px "Segoe UI", system-ui, -apple-system, sans-serif';
+        bCtx.textAlign = 'left';
+        bCtx.textBaseline = 'middle';
+        bCtx.fillText(`${zone.id}: ${zone.pessoas}p - ${zone.occupancy}%`, 58, 48);
+
+        const badgeTex = new THREE.CanvasTexture(badgeCanvas);
+        badgeTex.needsUpdate = true;
+        const badgeMat = new THREE.SpriteMaterial({
+          map: badgeTex,
+          transparent: true,
+          opacity: 0.95,
+          depthWrite: false,
+        });
+        const sprite = new THREE.Sprite(badgeMat);
+        sprite.position.set(zone.x, 0.95, zone.z);
+        sprite.scale.set(1.45, 0.38, 1);
+        zoneGroup.add(sprite);
+        zoneSprites.push(sprite);
+
+        // Haste vertical de conexão sutil do disco ao tag
+        const stemPoints = [
+          new THREE.Vector3(zone.x, 0.04, zone.z),
+          new THREE.Vector3(zone.x, 0.75, zone.z),
+        ];
+        const stemGeo = new THREE.BufferGeometry().setFromPoints(stemPoints);
+        const stemMat = new THREE.LineBasicMaterial({
+          color: new THREE.Color(colorHex),
+          transparent: true,
+          opacity: 0.45,
+          depthWrite: false,
+        });
+        const stem = new THREE.Line(stemGeo, stemMat);
+        zoneGroup.add(stem);
+      }
+    });
+
+    scene.add(zoneGroup);
+    zoneMaterialsRef.current = zoneMats;
+    zoneSpritesRef.current = zoneSprites;
+
+    // 2. Conexões de Fluxo (Linhas Tracejadas Azul Claro) simulando a circulação entre pontos principais
+    const flowGroup = new THREE.Group();
+    flowGroup.name = 'circulation-flow';
+    const flowMats: THREE.LineDashedMaterial[] = [];
+
+    const circulationRoutes: { from: string; to: string; curveBend: number }[] = [
+      { from: 'Z3', to: 'Z1', curveBend: 0.35 },
+      { from: 'Z3', to: 'Z4', curveBend: -0.3 },
+      { from: 'Z1', to: 'Z2', curveBend: 0.25 },
+      { from: 'Z4', to: 'Z5', curveBend: -0.35 },
+      { from: 'Z2', to: 'Z6', curveBend: 0.3 },
+      { from: 'Z5', to: 'Z6', curveBend: -0.25 },
+      { from: 'Z1', to: 'Z4', curveBend: 0.2 },
+    ];
+
+    circulationRoutes.forEach((route) => {
+      const zFrom = ZONES_DATA.find((z) => z.id === route.from);
+      const zTo = ZONES_DATA.find((z) => z.id === route.to);
+      if (!zFrom || !zTo) return;
+
+      const midX = (zFrom.x + zTo.x) / 2 - (zTo.z - zFrom.z) * 0.18 * route.curveBend;
+      const midZ = (zFrom.z + zTo.z) / 2 + (zTo.x - zFrom.x) * 0.18 * route.curveBend;
+
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(zFrom.x, 0.045, zFrom.z),
+        new THREE.Vector3(midX, 0.045, midZ),
+        new THREE.Vector3(zTo.x, 0.045, zTo.z)
+      );
+
+      const points = curve.getPoints(36);
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+      const lineMat = new THREE.LineDashedMaterial({
+        color: 0x38bdf8,
+        dashSize: 0.35,
+        gapSize: 0.2,
+        transparent: true,
+        opacity: 0.85 * heatmapIntensityRef.current,
+        linewidth: 2,
+        depthWrite: false,
+      });
+      flowMats.push(lineMat);
+      const line = new THREE.Line(lineGeo, lineMat);
+      line.computeLineDistances();
+      flowGroup.add(line);
+    });
+
+    scene.add(flowGroup);
+    flowLinesMatRef.current = flowMats;
 
     const stageGroup = new THREE.Group();
     stageGroup.position.set(0, 0, -13);
@@ -882,6 +1100,14 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         heatmapMatRef.current.opacity = Math.min(1, heatmapIntensityRef.current * pulse);
       }
 
+      // Pulso dinâmico das linhas tracejadas de circulação simulando fluxo contínuo
+      const flowPulse = 0.75 + Math.sin(currentTime * 0.004) * 0.2;
+      flowLinesMatRef.current.forEach((mat) => {
+        if (mat.visible) {
+          mat.opacity = Math.min(1, heatmapIntensityRef.current * flowPulse);
+        }
+      });
+
       if (selectedCameraRef.current) {
         const camGroup = cameraMeshesRef.current.get(selectedCameraRef.current.id);
         if (camGroup) {
@@ -928,6 +1154,41 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
       heatmapMat.dispose();
       heatmapTexture.dispose();
       roomEnvTexture.dispose();
+      ambientLight.dispose();
+      dirLight.dispose();
+      hemiLight.dispose();
+
+      flowGroup.traverse((child) => {
+        if (child instanceof THREE.Line) {
+          child.geometry?.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+      scene.remove(flowGroup);
+
+      zoneGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry?.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose());
+          } else if (child.material) {
+            child.material.dispose();
+          }
+        } else if (child instanceof THREE.Sprite) {
+          child.material?.map?.dispose();
+          child.material?.dispose();
+        } else if (child instanceof THREE.Line) {
+          child.geometry?.dispose();
+          if (child.material) (child.material as THREE.Material).dispose();
+        }
+      });
+      scene.remove(zoneGroup);
 
       cameraMeshesRef.current.forEach((grp) => {
         grp.traverse((child) => {
@@ -963,7 +1224,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full h-[400px] sm:h-[480px] md:h-[520px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none flex flex-col pb-12 sm:pb-14">
+    <div className="relative w-full h-[480px] sm:h-[540px] md:h-[600px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none flex flex-col pb-12 sm:pb-14">
       {/* Container da Canvas com flex-1 para respeitar o padding inferior de respiro */}
       <div ref={mountRef} className="w-full flex-1 cursor-grab active:cursor-grabbing" />
 
@@ -973,77 +1234,24 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         <span className="text-slate-400 hidden sm:inline">· 7 Câmeras & F&B Liquid</span>
       </div>
 
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <button
-          onClick={() => setShowHeatmapControls(!showHeatmapControls)}
-          title="Controle de Intensidade do Heatmap"
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors shadow-md ${
-            heatmapIntensity > 0
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-              : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:bg-slate-800'
-          }`}
-        >
-          <Flame className={`w-3.5 h-3.5 ${heatmapIntensity > 0 ? 'text-amber-400 fill-amber-400/30 animate-pulse' : ''}`} />
-          <span>Heatmap {Math.round(heatmapIntensity * 100)}%</span>
-        </button>
-
-        <button
-          onClick={toggleLighting}
-          title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
-          className="p-2 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors shadow-md"
-        >
-          {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
-        </button>
-      </div>
-
-      {showHeatmapControls && (
-        <div className="absolute top-14 right-4 z-20 w-64 p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs space-y-2 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between text-slate-200 font-semibold border-b border-slate-800 pb-1.5">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <Layers className="w-3.5 h-3.5" />
-              Intensidade do Heatmap
-            </span>
-            <button
-              onClick={() => setShowHeatmapControls(false)}
-              className="text-slate-400 hover:text-white p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex justify-between text-[11px] text-slate-400">
-              <span>Opacidade no Solo:</span>
-              <span className="font-mono text-cyan-300">{Math.round(heatmapIntensity * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={heatmapIntensity}
-              onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/80">
-            {[0, 0.4, 0.75, 1.0].map((presetVal) => (
-              <button
-                key={presetVal}
-                onClick={() => handleIntensityChange(presetVal)}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  Math.abs(heatmapIntensity - presetVal) < 0.05
-                    ? 'bg-cyan-500 text-slate-950 font-bold'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {presetVal === 0 ? 'Off' : `${Math.round(presetVal * 100)}%`}
-              </button>
-            ))}
-          </div>
+      {/* Controles do Canto Superior Direito: Modo Noturno e Componente Flutuante de Concentração / Heatmap */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleLighting}
+            title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
+            className="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white transition-colors shadow-md"
+          >
+            {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
+          </button>
         </div>
-      )}
+
+        <HeatmapLegendControls
+          intensity={heatmapIntensity}
+          onIntensityChange={handleIntensityChange}
+          defaultExpanded={true}
+        />
+      </div>
 
       {selectedCamera && (
         <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
