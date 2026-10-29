@@ -10,13 +10,12 @@ import {
   ChevronDown,
   ChevronUp,
   Camera,
-  Flame,
   X,
   Activity,
-  Layers,
   Radio,
   Eye,
 } from 'lucide-react';
+import { HeatmapLegendControls } from './HeatmapLegendControls';
 
 export type TipoCamera = 'entrada_perimetro' | 'fb_liquid';
 
@@ -225,7 +224,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   const [isNightMode, setIsNightMode] = useState(true);
   const [activePreset, setActivePreset] = useState<'geral' | 'autos' | 'instas' | 'aerea' | 'cams_fb' | 'cams_ent'>('geral');
   const [hudCollapsed, setHudCollapsed] = useState(false);
-  const [showHeatmapControls, setShowHeatmapControls] = useState(false);
 
   const [selectedCamera, setSelectedCamera] = useState<HardwareCamera | null>(() => {
     if (selectedCameraId) {
@@ -276,6 +274,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
 
   const handleIntensityChange = (val: number) => {
     setHeatmapIntensity(val);
+    heatmapIntensityRef.current = val;
     onHeatmapIntensityChange?.(val);
     if (heatmapMatRef.current) {
       heatmapMatRef.current.opacity = val;
@@ -963,7 +962,7 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
   }, []);
 
   return (
-    <div className="relative w-full h-[400px] sm:h-[480px] md:h-[520px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none flex flex-col pb-12 sm:pb-14">
+    <div className="relative w-full h-[480px] sm:h-[540px] md:h-[600px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none flex flex-col pb-12 sm:pb-14">
       {/* Container da Canvas com flex-1 para respeitar o padding inferior de respiro */}
       <div ref={mountRef} className="w-full flex-1 cursor-grab active:cursor-grabbing" />
 
@@ -973,77 +972,24 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
         <span className="text-slate-400 hidden sm:inline">· 7 Câmeras & F&B Liquid</span>
       </div>
 
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <button
-          onClick={() => setShowHeatmapControls(!showHeatmapControls)}
-          title="Controle de Intensidade do Heatmap"
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border backdrop-blur-md transition-colors shadow-md ${
-            heatmapIntensity > 0
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
-              : 'bg-slate-900/80 text-slate-400 border-slate-700 hover:bg-slate-800'
-          }`}
-        >
-          <Flame className={`w-3.5 h-3.5 ${heatmapIntensity > 0 ? 'text-amber-400 fill-amber-400/30 animate-pulse' : ''}`} />
-          <span>Heatmap {Math.round(heatmapIntensity * 100)}%</span>
-        </button>
-
-        <button
-          onClick={toggleLighting}
-          title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
-          className="p-2 rounded-lg bg-slate-900/85 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors shadow-md"
-        >
-          {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
-        </button>
-      </div>
-
-      {showHeatmapControls && (
-        <div className="absolute top-14 right-4 z-20 w-64 p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl text-xs space-y-2 animate-in fade-in duration-150">
-          <div className="flex items-center justify-between text-slate-200 font-semibold border-b border-slate-800 pb-1.5">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <Layers className="w-3.5 h-3.5" />
-              Intensidade do Heatmap
-            </span>
-            <button
-              onClick={() => setShowHeatmapControls(false)}
-              className="text-slate-400 hover:text-white p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex justify-between text-[11px] text-slate-400">
-              <span>Opacidade no Solo:</span>
-              <span className="font-mono text-cyan-300">{Math.round(heatmapIntensity * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={heatmapIntensity}
-              onChange={(e) => handleIntensityChange(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800/80">
-            {[0, 0.4, 0.75, 1.0].map((presetVal) => (
-              <button
-                key={presetVal}
-                onClick={() => handleIntensityChange(presetVal)}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  Math.abs(heatmapIntensity - presetVal) < 0.05
-                    ? 'bg-cyan-500 text-slate-950 font-bold'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {presetVal === 0 ? 'Off' : `${Math.round(presetVal * 100)}%`}
-              </button>
-            ))}
-          </div>
+      {/* Controles do Canto Superior Direito: Modo Noturno e Componente Flutuante de Concentração / Heatmap */}
+      <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleLighting}
+            title={isNightMode ? 'Modo Diurno' : 'Modo Noturno'}
+            className="p-2 rounded-xl bg-slate-900/85 hover:bg-slate-800 backdrop-blur-md border border-slate-700 text-slate-200 hover:text-white transition-colors shadow-md"
+          >
+            {isNightMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-300" />}
+          </button>
         </div>
-      )}
+
+        <HeatmapLegendControls
+          intensity={heatmapIntensity}
+          onIntensityChange={handleIntensityChange}
+          defaultExpanded={true}
+        />
+      </div>
 
       {selectedCamera && (
         <div className="absolute top-14 left-4 z-20 max-w-[280px] sm:max-w-[320px] p-3 rounded-xl bg-slate-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
