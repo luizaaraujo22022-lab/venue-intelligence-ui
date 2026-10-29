@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  RefreshCw, 
-  Package, 
-  Radio, 
-  Plus, 
-  Layers3, 
-  Bot, 
-  Compass, 
-  Beer, 
-  Camera, 
-  X 
+import {
+  Activity,
+  RefreshCw,
+  Package,
+  Radio,
+  Plus,
+  Layers3,
+  Bot,
+  Compass,
+  Beer,
+  Camera,
+  X
 } from 'lucide-react';
 import { AutosservicoCard } from './components/AutosservicoCard';
 import { InstagramavelCard } from './components/InstagramavelCard';
@@ -18,9 +18,32 @@ import { Venue3DScene } from './components/Venue3DScene';
 import { SinteseAcumulada } from './components/SinteseAcumulada';
 import { TerminalCLI } from './components/TerminalCLI';
 
-// Ajusta o caminho abaixo se os dados iniciais estiverem em './data/mockData' ou noutro ficheiro de mocks
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
 import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
+
+export interface ZoneData {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  occupancy: number; 
+  pessoas: number;
+}
+
+export const ZONES_DATA: ZoneData[] = [
+  { id: 'Z1', name: 'Balcão Principal', x: -1.5, z: 2.0, occupancy: 86, pessoas: 16 },
+  { id: 'Z2', name: 'Lounge Poltronas', x: -3.0, z: 0.5, occupancy: 70, pessoas: 7 },
+  { id: 'Z3', name: 'Entrada & Circulação', x: 0.0, z: 2.5, occupancy: 100, pessoas: 15 },
+  { id: 'Z4', name: 'Mesas Café & Network', x: 2.0, z: 1.5, occupancy: 88, pessoas: 7 },
+  { id: 'Z5', name: 'Espaço Autosserviço', x: 3.2, z: -0.5, occupancy: 25, pessoas: 2 },
+  { id: 'Z6', name: 'Área de Apoio / Staff', x: 1.0, z: -1.5, occupancy: 17, pessoas: 1 },
+];
+
+export function getHeatmapColor(occupancy: number): string {
+  if (occupancy >= 85) return '#ef4444'; 
+  if (occupancy >= 50) return '#f59e0b'; 
+  return '#10b981';                     
+}
 
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
@@ -60,7 +83,7 @@ export default function App() {
         const novoCopos = Math.max(0, item.nivelCopos - 1);
         const novasTransacoes = item.transacoesAcumuladas + 1;
         const novaReceita = item.receitaTotal + valor;
-        const novoStatus: StatusAutosservico = 
+        const novoStatus: StatusAutosservico =
           novoNivel <= 20 ? 'critico' : novoNivel <= 70 ? 'atencao' : item.status === 'manutencao' ? 'manutencao' : 'operacional';
 
         return {
@@ -193,10 +216,10 @@ export default function App() {
         prev.map((a) =>
           a.id === 'aut-03'
             ? {
-                ...a,
-                transacoesAcumuladas: a.transacoesAcumuladas + 35,
-                receitaTotal: a.receitaTotal + 1575,
-              }
+              ...a,
+              transacoesAcumuladas: a.transacoesAcumuladas + 35,
+              receitaTotal: a.receitaTotal + 1575,
+            }
             : a
         )
       );
@@ -333,7 +356,7 @@ export default function App() {
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            <div 
+            <div
               onClick={() => setActiveTab('autosservico')}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-600/50 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-900/50 transition-colors"
             >
@@ -356,7 +379,7 @@ export default function App() {
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95"
             >
-              <span className="font-mono">{'>_' }</span>
+              <span className="font-mono">{'>_'}</span>
               <span>Terminal CLI</span>
             </button>
 
@@ -376,18 +399,16 @@ export default function App() {
             <div className="flex items-center gap-2 sm:gap-4 shrink-0 text-xs">
               <button
                 onClick={() => setActiveTab('tudo')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'tudo' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <span>Mapa & Arena</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('autosservico')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'autosservico' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <Layers3 className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Zonas & Telemetria ({autos.length})</span>
@@ -406,9 +427,8 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab('instagramavel')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <Bot className="w-3.5 h-3.5 text-fuchsia-400" />
                 <span>Predições de Gargalos (IA)</span>
@@ -416,9 +436,8 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab('sintese')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
-                  activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 <span>Síntese Acumulada</span>
               </button>
@@ -428,7 +447,7 @@ export default function App() {
               onClick={() => setShowTerminal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0d1a2d] border border-cyan-600/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-900/30 transition-colors shrink-0"
             >
-              <span className="text-emerald-400">{'>_' }</span>
+              <span className="text-emerald-400">{'>_'}</span>
               <span>Terminal de Execução</span>
             </button>
           </div>
@@ -599,22 +618,20 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setNovoTipo('autosservico')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${
-                      novoTipo === 'autosservico'
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'autosservico'
                         ? 'border-cyan-400 bg-cyan-950/60 text-cyan-300'
                         : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                    }`}
+                      }`}
                   >
                     Totem Autosserviço
                   </button>
                   <button
                     type="button"
                     onClick={() => setNovoTipo('instagramavel')}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${
-                      novoTipo === 'instagramavel'
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-colors ${novoTipo === 'instagramavel'
                         ? 'border-fuchsia-400 bg-fuchsia-950/60 text-fuchsia-300'
                         : 'border-slate-800 text-slate-400 hover:bg-[#070d18]'
-                    }`}
+                      }`}
                   >
                     Ponto Instagramável
                   </button>
