@@ -34,7 +34,7 @@ export const ZONES_DATA: ZoneData[] = [
   { id: 'Z1', name: 'Balcão Principal', x: -1.5, z: 2.0, occupancy: 86, pessoas: 16 },
   { id: 'Z2', name: 'Lounge Poltronas', x: -3.0, z: 0.5, occupancy: 70, pessoas: 7 },
   { id: 'Z3', name: 'Entrada & Circulação', x: 0.0, z: 2.5, occupancy: 100, pessoas: 15 },
-  { id: 'Z4', name: 'Mesas Café & Network', x: 2.0, z: 1.5, occupancy: 88, pessoas: 7 },
+  { id: 'Z4', name: 'Mesas Café & Network', x: 2.0, z: 1.5, occupancy: 68, pessoas: 7 },
   { id: 'Z5', name: 'Espaço Autosserviço', x: 3.2, z: -0.5, occupancy: 25, pessoas: 2 },
   { id: 'Z6', name: 'Área de Apoio / Staff', x: 1.0, z: -1.5, occupancy: 17, pessoas: 1 },
 ];
