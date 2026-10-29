@@ -17,6 +17,13 @@ import { InstagramavelCard } from './components/InstagramavelCard';
 import { Venue3DScene } from './components/Venue3DScene';
 import { SinteseAcumulada } from './components/SinteseAcumulada';
 import { TerminalCLI } from './components/TerminalCLI';
+import { CameraTelemetryPanel } from './components/camera/CameraTelemetryPanel';
+import { ApiToast } from './components/ui/ApiToast';
+import { useOpsActions } from './hooks/useOpsActions';
+import { useHistoricoTelemetria } from './hooks/useHistoricoTelemetria';
+import { toZonaPublico } from './utils/publico';
+import { gerarAlertasPreditivos } from './utils/predicao';
+import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
 import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
@@ -48,7 +55,7 @@ export function getHeatmapColor(occupancy: number): string {
 export default function App() {
   const [autos, setAutos] = useState<AutosservicoItem[]>(INITIAL_AUTOSSERVICO);
   const [instas, setInstas] = useState<InstagramavelItem[]>(INITIAL_INSTAGRAMAVEL);
-  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'mapa'>('tudo');
+  const [activeTab, setActiveTab] = useState<'tudo' | 'sintese' | 'autosservico' | 'instagramavel' | 'predicao' | 'mapa'>('tudo');
   const [show3DMap, setShow3DMap] = useState(true);
   const [selectedAtracaoId, setSelectedAtracaoId] = useState<string | null>(null);
   const [filtroSetor, setFiltroSetor] = useState<string | null>(null);
@@ -57,22 +64,94 @@ export default function App() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
   const [lastUpdate, setLastUpdate] = useState('04:15:40');
   const [pingLatency, setPingLatency] = useState(431);
+  const { ocupado, feedback, despachoOps, vendaExpress, limparFeedback } = useOpsActions();
 
   const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
   const [formSetor, setFormSetor] = useState('Arena Principal');
   const [formInsumoOuPatrocinador, setFormInsumoOuPatrocinador] = useState('');
 
+  // '5s' | '10s' | '30s' -> milissegundos (o select "Auto" agora controla o intervalo)
+  const intervaloMs = (parseInt(autoRefreshInterval, 10) || 10) * 1000;
+
+  // Passo 6: Sincronização e Busca de Dados Reais do Backend
+  useEffect(() => {
+    const fetchDadosBackend = async () => {
+      const startTime = performance.now();
+      try {
+        const response = await fetch('https://api-evento-ia.onrender.com/status-pdvs');
+        if (!response.ok) {
+          throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Processa os dados recebidos utilizando a função toZonaPublico
+        if (Array.isArray(data) && data.length > 0) {
+          const dadosProcessados: AutosservicoItem[] = data.map((item, index) => {
+            const zonaPub = toZonaPublico(item);
+            const baseMock = INITIAL_AUTOSSERVICO[index] || INITIAL_AUTOSSERVICO[0];
+
+            return {
+              ...baseMock,
+              id: item.id || baseMock.id,
+              nome: item.nome || (zonaPub as any).nome || baseMock.nome,
+              pessoasNaFila: zonaPub.pessoas || baseMock.pessoasNaFila,
+              tempoEstimadoEsperaMin: (zonaPub as any).tempoEstimadoEsperaMin ?? baseMock.tempoEstimadoEsperaMin,
+              nivelAtualInsumo: zonaPub.ocupacaoPct !== undefined ? Math.max(0, baseMock.capacidadeTotalInsumo * (1 - zonaPub.ocupacaoPct / 100)) : baseMock.nivelAtualInsumo,
+            };
+          });
+
+          setAutos(dadosProcessados);
+        }
+
+        const endTime = performance.now();
+        setPingLatency(Math.round(endTime - startTime + 400));
+        setLastUpdate(new Date().toTimeString().split(' ')[0]);
+      } catch (error) {
+        console.error('Falha ao sincronizar com backend da IA, mantendo estado atual:', error);
+        setPingLatency(Math.floor(450 + Math.random() * 50));
+      }
+    };
+
+    fetchDadosBackend();
+    const timerInterval = setInterval(fetchDadosBackend, intervaloMs);
+
+    return () => clearInterval(timerInterval);
+  }, [intervaloMs]);
+
+  // Histórico do tempo de espera por atração, usado pela IA preditiva
+  const metricasEspera = useMemo(() => {
+    const m: Record<string, number> = {};
+    autos.forEach((a) => { m[a.id] = a.tempoEstimadoEsperaMin; });
+    instas.forEach((i) => { m[i.id] = i.tempoEsperaMin; });
+    return m;
+  }, [autos, instas]);
+
+  const { historico, versao } = useHistoricoTelemetria(metricasEspera, intervaloMs);
+
+  // `versao` muda a cada nova amostra; é ela que faz a previsão ser recalculada,
+  // porque `historico` é um Map mutável (mesma referência entre renders).
+  const alertasPreditivos = useMemo(
+    () => gerarAlertasPreditivos(autos, instas, historico),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [autos, instas, historico, versao],
+  );
+
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
       setLastUpdate(now.toTimeString().split(' ')[0]);
       setPingLatency(Math.floor(410 + Math.random() * 40));
-    }, 10000);
+    }, intervaloMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [intervaloMs]);
 
-  const sinteseData = computeSinteseAcumulada(autos, instas);
+  const sinteseBase = computeSinteseAcumulada(autos, instas);
+  // Alertas da IA primeiro, depois os alertas fixos já existentes
+  const sinteseData = {
+    ...sinteseBase,
+    principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
+  };
   const totensEmDeficit = autos.filter((a) => a.nivelAtualInsumo / a.capacidadeTotalInsumo < 0.3 || a.status === 'atencao').length;
 
   const handleSimularTransacao = (id: string, valor = 30) => {
@@ -108,6 +187,9 @@ export default function App() {
           nivelCopos: item.capacidadeCopos,
           status: 'operacional',
           pessoasNaFila: Math.max(1, Math.floor(item.pessoasNaFila / 2)),
+          tempoEstimadoEsperaMin: Number(
+            ((Math.max(1, Math.floor(item.pessoasNaFila / 2)) * item.tempoMedioAtendimentoSegundos) / 60).toFixed(1),
+          ),
           ultimoAbastecimento: 'Agora mesmo',
         };
       })
@@ -180,27 +262,56 @@ export default function App() {
 
   const handleSimularPicoDeFluxo = () => {
     setAutos((prev) =>
-      prev.map((a) => ({
-        ...a,
-        transacoesAcumuladas: a.transacoesAcumuladas + 25,
-        receitaTotal: a.receitaTotal + 25 * a.ticketMedio,
-        nivelAtualInsumo: Math.max(10, a.nivelAtualInsumo - 12),
-        pessoasNaFila: a.pessoasNaFila + 4,
-      }))
+      prev.map((a) => {
+        const novaFila = a.pessoasNaFila + 4;
+        return {
+          ...a,
+          transacoesAcumuladas: a.transacoesAcumuladas + 25,
+          receitaTotal: a.receitaTotal + 25 * a.ticketMedio,
+          nivelAtualInsumo: Math.max(10, a.nivelAtualInsumo - 12),
+          pessoasNaFila: novaFila,
+          tempoEstimadoEsperaMin: Number(((novaFila * a.tempoMedioAtendimentoSegundos) / 60).toFixed(1)),
+        };
+      })
     );
     setInstas((prev) =>
-      prev.map((i) => ({
-        ...i,
-        capturasTotais: i.capturasTotais + 40,
-        compartilhamentosSociaisEstimados: i.compartilhamentosSociaisEstimados + 32,
-        alcanceEstimadoRedes: i.alcanceEstimadoRedes + 5400,
-        pessoasNaFila: i.pessoasNaFila + 5,
-        status: 'alta_procura',
-      }))
+      prev.map((i) => {
+        const novaFila = i.pessoasNaFila + 5;
+        const minPorPessoa = i.pessoasNaFila > 0 ? i.tempoEsperaMin / i.pessoasNaFila : 0.6;
+        return {
+          ...i,
+          capturasTotais: i.capturasTotais + 40,
+          compartilhamentosSociaisEstimados: i.compartilhamentosSociaisEstimados + 32,
+          alcanceEstimadoRedes: i.alcanceEstimadoRedes + 5400,
+          pessoasNaFila: novaFila,
+          tempoEsperaMin: Number((novaFila * minPorPessoa).toFixed(1)),
+          status: 'alta_procura',
+        };
+      })
     );
   };
 
   const handleExecutarAcaoSugerida = (alertaId: string, atracaoId?: string) => {
+    if (alertaId.startsWith('pred-')) {
+      if (atracaoId?.startsWith('aut-')) {
+        handleReabastecer(atracaoId);
+      } else if (atracaoId) {
+        setInstas((prev) =>
+          prev.map((i) =>
+            i.id === atracaoId
+              ? {
+                  ...i,
+                  pessoasNaFila: Math.max(1, Math.floor(i.pessoasNaFila / 2)),
+                  tempoEsperaMin: Number(Math.max(1, i.tempoEsperaMin / 2).toFixed(1)),
+                  status: 'ativo',
+                }
+              : i
+          )
+        );
+      }
+      return;
+    }
+
     if (alertaId === 'al-1' || atracaoId === 'aut-02') {
       handleReabastecer('aut-02');
     } else if (alertaId === 'al-2' || atracaoId === 'inst-01') {
@@ -368,8 +479,10 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => handleSimularPicoDeFluxo()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95"
+              onClick={() => void despachoOps()}
+              disabled={ocupado === 'despacho'}
+              title="Registra uma intervenção na API para a zona mais crítica"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#230914] border border-rose-500/60 text-rose-300 text-xs font-semibold hover:bg-rose-900/40 transition-colors active:scale-95 disabled:opacity-60 disabled:cursor-wait"
             >
               <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
               <span>Despacho Ops</span>
@@ -435,6 +548,16 @@ export default function App() {
               </button>
 
               <button
+                onClick={() => setActiveTab('instagramavel')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${
+                  activeTab === 'instagramavel' ? 'text-fuchsia-300 font-bold bg-[#1a0f26] border border-fuchsia-500/40' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Camera className="w-3.5 h-3.5 text-fuchsia-400" />
+                <span>Instagramáveis</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('sintese')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap font-medium ${activeTab === 'sintese' ? 'text-cyan-300 font-bold bg-[#0d1a2d] border border-cyan-500/40' : 'text-slate-400 hover:text-white'
                   }`}
@@ -456,6 +579,7 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        <ApiToast feedback={feedback} onClose={limparFeedback} />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-800">
           <div>
             <h2 className="text-base sm:text-lg font-mono font-bold text-emerald-400 flex items-center gap-2">
@@ -490,6 +614,13 @@ export default function App() {
           </div>
         )}
 
+        {/* Telemetria das 7 câmeras (dados da API) */}
+        {activeTab === 'tudo' && (
+          <div className="animate-in fade-in duration-200">
+            <CameraTelemetryPanel />
+          </div>
+        )}
+
         {/* Seção 1: Síntese Acumulada */}
         {(activeTab === 'tudo' || activeTab === 'sintese') && (
           <div className="animate-in fade-in duration-200">
@@ -500,6 +631,13 @@ export default function App() {
               onSimularPicoDeFluxo={handleSimularPicoDeFluxo}
               onExecutarAcaoSugerida={handleExecutarAcaoSugerida}
             />
+          </div>
+        )}
+
+        {/* Seção: Predição de Gargalos (IA) */}
+        {activeTab === 'predicao' && (
+          <div className="animate-in fade-in duration-200">
+            <PredicaoGargalosView autos={autos} instas={instas} historico={historico} />
           </div>
         )}
 
@@ -527,7 +665,13 @@ export default function App() {
                   key={item.id}
                   item={item}
                   isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={handleSimularTransacao}
+                  onSimularTransacao={(id, valor) => {
+                    handleSimularTransacao(id, valor);
+                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
+                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
+                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
+                    });
+                  }}
                   onReabastecer={handleReabastecer}
                   onToggleManutencao={handleToggleManutencao}
                   onSelectIn3D={(id) => {
@@ -682,19 +826,19 @@ export default function App() {
                 />
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-3.5 py-2 text-xs font-medium text-slate-400 hover:text-white rounded-lg"
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-md shadow-emerald-500/20"
+                  className="px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg transition-colors shadow-lg shadow-cyan-400/20"
                 >
-                  Adicionar ao Venue
+                  Salvar e Cadastrar
                 </button>
               </div>
             </form>
