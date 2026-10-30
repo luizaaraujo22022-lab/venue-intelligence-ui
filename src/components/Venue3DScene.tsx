@@ -1350,15 +1350,6 @@ export const Venue3DScene: React.FC<Venue3DSceneProps> = ({
             </button>
 
             <button
-              onClick={() => applyPreset('autos')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-                activePreset === 'autos' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              Totens Chopp
-            </button>
-
-            <button
               onClick={() => applyPreset('cams_fb')}
               className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activePreset === 'cams_fb'
