@@ -1,5 +1,5 @@
-﻿import React from 'react';
-import { LayoutDashboard, Users, ShoppingBag, BarChart3 } from 'lucide-react';
+import React from 'react';
+import { LayoutDashboard, ShoppingBag, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -9,7 +9,6 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const menuItems = [
     { id: 'overview', label: 'Visão Geral', icon: LayoutDashboard },
-    { id: 'balcao', label: 'Balcão & Filas', icon: Users },
     { id: 'autosservico', label: 'Autosserviço & Zonas', icon: ShoppingBag },
     { id: 'sintese', label: 'Síntese D1-D3', icon: BarChart3 },
   ];
