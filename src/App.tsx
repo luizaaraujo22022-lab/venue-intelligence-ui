@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Activity,
   RefreshCw,
-  Package,
   Radio,
   Plus,
   Layers3,
@@ -152,8 +151,6 @@ export default function App() {
     ...sinteseBase,
     principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
   };
-  const totensEmDeficit = autos.filter((a) => a.nivelAtualInsumo / a.capacidadeTotalInsumo < 0.3 || a.status === 'atencao').length;
-
   const handleSimularTransacao = (id: string, valor = 30) => {
     setAutos((prev) =>
       prev.map((item) => {
@@ -467,17 +464,6 @@ export default function App() {
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            <div
-              onClick={() => setActiveTab('autosservico')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-600/50 text-amber-300 text-xs font-semibold cursor-pointer hover:bg-amber-900/50 transition-colors"
-            >
-              <Package className="w-3.5 h-3.5" />
-              <span>Insumos</span>
-              <span className="w-4 h-4 rounded-full bg-rose-600 text-white font-mono text-[10px] font-bold flex items-center justify-center">
-                {totensEmDeficit}
-              </span>
-            </div>
-
             <button
               onClick={() => void despachoOps()}
               disabled={ocupado === 'despacho'}
@@ -525,17 +511,6 @@ export default function App() {
               >
                 <Layers3 className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Zonas & Telemetria ({autos.length})</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveTab('autosservico');
-                  setFiltroSetor(null);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-amber-300 hover:text-amber-200 transition-colors whitespace-nowrap font-medium"
-              >
-                <Package className="w-3.5 h-3.5 text-amber-400" />
-                <span>Insumos & Chopp ({totensEmDeficit} em déficit)</span>
               </button>
 
               <button
