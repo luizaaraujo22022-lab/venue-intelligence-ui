@@ -296,18 +296,6 @@ export default function App() {
             : i
         )
       );
-    } else if (alertaId === 'al-3') {
-      setAutos((prev) =>
-        prev.map((a) =>
-          a.id === 'aut-03'
-            ? {
-              ...a,
-              transacoesAcumuladas: a.transacoesAcumuladas + 35,
-              receitaTotal: a.receitaTotal + 1575,
-            }
-            : a
-        )
-      );
     }
   };
 
@@ -752,7 +740,6 @@ export default function App() {
                 >
                   <option value="Arena Principal">Arena Principal</option>
                   <option value="Palco Sunset">Palco Sunset</option>
-                  <option value="Vila Gastronômica">Vila Gastronômica</option>
                   <option value="Camarote VIP">Camarote VIP</option>
                   <option value="Vila das Marcas">Vila das Marcas</option>
                 </select>
