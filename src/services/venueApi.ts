@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { api } from './api';
 import type { PdvStatusItem, PdvStatusResponse, TelemetryReading } from '../types/publico';
-import type { AutosservicoItem } from '../types/venue';
 import type {
   OperationalDispatchRequest,
   OperationalDispatchResponse,
@@ -73,16 +72,6 @@ export async function postDespacho(
     headers: authHeaders(),
     timeout: TIMEOUT_MS,
   });
-  return data;
-}
-
-/** Registra uma venda no totem de autosserviço (Venda Express) e devolve o totem atualizado. */
-export async function postTransacaoAutosservico(id: string, valor: number): Promise<AutosservicoItem> {
-  const { data } = await api.post<AutosservicoItem>(
-    `/api/v1/venue/autosservico/${encodeURIComponent(id)}/transacao`,
-    { valor },
-    { headers: authHeaders(), timeout: TIMEOUT_MS },
-  );
   return data;
 }
 
