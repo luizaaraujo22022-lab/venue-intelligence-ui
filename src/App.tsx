@@ -143,10 +143,16 @@ export default function App() {
   }, [intervaloMs]);
 
   const sinteseBase = computeSinteseAcumulada(autos, instas);
-  // Alertas da IA primeiro, depois os alertas fixos já existentes
+  const idsAutosservico = new Set(autos.map((auto) => auto.id));
+  const alertasFocadosEmFluxo = [...alertasPreditivos, ...sinteseBase.principaisAlertas].filter((alerta) => {
+    const atracaoId = alerta.atracaoId ?? '';
+    const ligadoAUmTotem = idsAutosservico.has(atracaoId) || atracaoId.startsWith('aut-');
+    const previsaoDeTotem = alerta.id.startsWith('pred-aut-');
+    return !ligadoAUmTotem && !previsaoDeTotem;
+  });
   const sinteseData = {
     ...sinteseBase,
-    principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
+    principaisAlertas: alertasFocadosEmFluxo,
   };
   const handleReabastecer = (id: string) => {
     setAutos((prev) =>
