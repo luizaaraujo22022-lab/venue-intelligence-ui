@@ -25,7 +25,7 @@ import { gerarAlertasPreditivos } from './utils/predicao';
 import { PredicaoGargalosView } from './components/predicao/PredicaoGargalosView';
 
 import { INITIAL_AUTOSSERVICO, INITIAL_INSTAGRAMAVEL, computeSinteseAcumulada } from './data/mockData';
-import type { AutosservicoItem, InstagramavelItem, StatusAutosservico } from './types/venue';
+import type { AutosservicoItem, InstagramavelItem } from './types/venue';
 
 export interface ZoneData {
   id: string;
@@ -63,7 +63,7 @@ export default function App() {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState('10s');
   const [lastUpdate, setLastUpdate] = useState('04:15:40');
   const [pingLatency, setPingLatency] = useState(431);
-  const { ocupado, feedback, despachoOps, vendaExpress, limparFeedback } = useOpsActions();
+  const { ocupado, feedback, despachoOps, limparFeedback } = useOpsActions();
 
   const [novoTipo, setNovoTipo] = useState<'autosservico' | 'instagramavel'>('autosservico');
   const [formNome, setFormNome] = useState('');
@@ -151,29 +151,6 @@ export default function App() {
     ...sinteseBase,
     principaisAlertas: [...alertasPreditivos, ...sinteseBase.principaisAlertas],
   };
-  const handleSimularTransacao = (id: string, valor = 30) => {
-    setAutos((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item;
-        const novoNivel = Math.max(0, item.nivelAtualInsumo - 0.5);
-        const novoCopos = Math.max(0, item.nivelCopos - 1);
-        const novasTransacoes = item.transacoesAcumuladas + 1;
-        const novaReceita = item.receitaTotal + valor;
-        const novoStatus: StatusAutosservico =
-          novoNivel <= 20 ? 'critico' : novoNivel <= 70 ? 'atencao' : item.status === 'manutencao' ? 'manutencao' : 'operacional';
-
-        return {
-          ...item,
-          nivelAtualInsumo: novoNivel,
-          nivelCopos: novoCopos,
-          transacoesAcumuladas: novasTransacoes,
-          receitaTotal: novaReceita,
-          status: novoStatus,
-        };
-      })
-    );
-  };
-
   const handleReabastecer = (id: string) => {
     setAutos((prev) =>
       prev.map((item) => {
@@ -317,18 +294,6 @@ export default function App() {
           i.id === 'inst-01'
             ? { ...i, pessoasNaFila: 6, tempoEsperaMin: 3.2, status: 'ativo' }
             : i
-        )
-      );
-    } else if (alertaId === 'al-3') {
-      setAutos((prev) =>
-        prev.map((a) =>
-          a.id === 'aut-03'
-            ? {
-              ...a,
-              transacoesAcumuladas: a.transacoesAcumuladas + 35,
-              receitaTotal: a.receitaTotal + 1575,
-            }
-            : a
         )
       );
     }
@@ -640,13 +605,6 @@ export default function App() {
                   key={item.id}
                   item={item}
                   isSelected={selectedAtracaoId === item.id}
-                  onSimularTransacao={(id, valor) => {
-                    handleSimularTransacao(id, valor);
-                    // Confirma a venda na API; se der certo, o totem passa a mostrar os números do servidor.
-                    void vendaExpress(id, valor ?? item.ticketMedio).then((atualizado) => {
-                      if (atualizado) setAutos((prev) => prev.map((a) => (a.id === atualizado.id ? atualizado : a)));
-                    });
-                  }}
                   onReabastecer={handleReabastecer}
                   onToggleManutencao={handleToggleManutencao}
                   onSelectIn3D={(id) => {
@@ -782,7 +740,6 @@ export default function App() {
                 >
                   <option value="Arena Principal">Arena Principal</option>
                   <option value="Palco Sunset">Palco Sunset</option>
-                  <option value="Vila Gastronômica">Vila Gastronômica</option>
                   <option value="Camarote VIP">Camarote VIP</option>
                   <option value="Vila das Marcas">Vila das Marcas</option>
                 </select>
