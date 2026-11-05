@@ -111,7 +111,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     metricas: metricasFluxo(72, 0.7, 26),
   },
   {
-    id: 'cam-fb-01',
+    id: 'cam-fluxo-01',
     codigo: 'CAM-FLUXO-01',
     nome: 'Controlo de Acesso & Densidade Oeste',
     tipo: 'fluxo_densidade',
@@ -123,7 +123,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     metricas: metricasFluxo(142, 0.8, 45),
   },
   {
-    id: 'cam-fb-02',
+    id: 'cam-fluxo-02',
     codigo: 'CAM-FLUXO-02',
     nome: 'Controlo de Acesso & Densidade Central',
     tipo: 'fluxo_densidade',
@@ -135,7 +135,7 @@ export const HARDWARE_CAMERAS: HardwareCamera[] = [
     metricas: metricasFluxo(218, 1.4, 68),
   },
   {
-    id: 'cam-fb-03',
+    id: 'cam-fluxo-03',
     codigo: 'CAM-FLUXO-03',
     nome: 'Controlo de Acesso & Densidade Leste',
     tipo: 'fluxo_densidade',
